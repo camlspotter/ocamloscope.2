@@ -242,7 +242,7 @@ let print_summary (sum : ( (Sig.k * Data.alias)
           H.div [
             match alias with
             | Data.Primitive n ->
-                H.div [ spans ~a:[H.a_class ["kind"]] "primitive"
+                H.div [ spans ~a:[H.a_class ["kind"]] "primitive "
                       ; spans n
                       ]
             | Path p ->
