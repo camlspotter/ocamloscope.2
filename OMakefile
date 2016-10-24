@@ -1,0 +1,71 @@
+# How-to-build using OMake
+#
+# cp OMakeroot.in OMakeroot # to create OMakeroot for the first time
+
+# If OMakeroot is here, include OMyMakefile
+if $(file-exists OMakeroot)
+   include OMyMakefile
+   export
+
+.PHONY: all install clean
+
+OCAMLPACKS[]=
+    spotlib
+    compiler-libs.common
+    ppx_import
+    ppx_meta_conv
+    ppx_meta_conv_ocaml
+    typerep
+    ppx_typerep_conv
+    ppx_orakuda.regexp_re_pcre
+    ppx_monadic
+    levenshtein
+    opamfind
+    unmagic
+    ppx_tools.metaquot
+
+OCAMLDEPFLAGS=
+OCAMLPPFLAGS= 
+
+FILES[] =
+    utils
+    cmt
+    reset
+    dumpsource
+    hump
+    humpext
+    humpeval
+    packpath
+    package
+    cm
+    xoprint
+    xprinttyp
+    sigext
+    hashcons
+    sigtyperep
+    data
+    scrape
+    datalink
+    sigmatch
+    coretype
+    distthresh
+    query
+    directive
+    summary
+    sig
+    sigscrape
+    humpscrape
+    humpflat
+    search
+    predeftypes
+    predefscrape
+    main
+
+PROGRAM = oco
+
+NO_INSTALL=true
+MyOCamlProgram($(PROGRAM), $(FILES))
+
+Subdirs()
+
+WithMerlin()

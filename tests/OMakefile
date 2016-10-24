@@ -1,0 +1,39 @@
+OCAMLWARNING_IGNORE[] += 32 34 37
+
+OCAMLPACKS[]=
+
+FILES[]=
+  t1
+  t2_shadow
+  t3_module
+  t4_module_coerce
+  t5_module_coerce_top
+  t6_sig
+  t7_mli
+  t8_nested_coerce
+  t9_include
+  t10_include_ext
+  t11_functor
+  t12_include_buffer
+  t13_functor_app
+  t14_module_alias
+  t15_typext
+  t16_class
+  t17_modtype
+  t18_functor
+  t19_inherit
+  t20_id_types
+  t21_ocamlbuild_plugin
+  t22_class_and_type
+  t23_monad
+  t24_netclient
+  t25_functor_app
+  t26_monad
+  t27_rec
+  t28_monad
+  t29_virtual
+  t30_typedtreeMap
+
+NO_INSTALL=true
+PROGRAM=dummy
+MyOCamlProgram($(PROGRAM), $(FILES))

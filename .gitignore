@@ -1,0 +1,16 @@
+.cm[a-z]*
+*~
+*.omc
+*.exe
+.omakedb
+.depend
+OMakeroot
+setup.data
+setup.log
+*.auto.mli
+setup.ml.ba.*
+opam/generated
+out/.*.(sig|hump|dat)
+oco.exe
+tests/dummy.exe
+

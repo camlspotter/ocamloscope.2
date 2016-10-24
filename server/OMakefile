@@ -1,0 +1,62 @@
+OCAMLINCLUDES= ..
+
+OCAMLDEPFLAGS=
+OCAMLPPFLAGS= 
+
+OCAMLPACKS[]=
+    spotlib
+    compiler-libs.common
+    ppx_meta_conv_ocaml
+    typerep
+    ppx_typerep_conv
+    ppx_orakuda.regexp_re_pcre
+    ppx_monadic
+    levenshtein
+    opamfind
+    unmagic
+    ppx_tools.metaquot
+    cohttp.lwt
+    tyxml
+    tyxml.ppx
+
+FILES[] =
+    ../utils
+    ../cmt
+    ../reset
+    ../dumpsource
+    ../hump
+    ../humpext
+    ../humpeval
+    ../packpath
+    ../package
+    ../cm
+    ../xoprint
+    ../xprinttyp
+    ../sigext
+    ../hashcons
+    ../sigtyperep
+    ../data
+    ../scrape
+    ../datalink
+    ../sigmatch
+    ../coretype
+    ../distthresh
+    ../query
+    ../directive
+    ../summary
+    ../sig
+    ../sigscrape
+    ../humpscrape
+    ../humpflat
+    ../search
+    ../predeftypes
+    ../predefscrape
+    main
+
+
+if $(not $(equal $(OSTYPE), Win32))
+    PROGRAM = server
+
+    MyOCamlProgram($(PROGRAM), $(FILES))
+
+    WithMerlin()

@@ -1,0 +1,53 @@
+body {
+    font-family: Arial,Helvetica,Sans-Serif;
+}
+
+span.logo {
+    font-size: 150%;
+    padding-bottom: 20px;
+}
+
+div.query {
+    padding-bottom: 20px;
+}
+
+div.query input {
+    width: 30ex;
+    font-size: 110%;
+}
+
+div.query select {
+    font-size: 110%;
+}
+
+div.group0 {
+    background: #e8e8e8;
+}
+
+div.group1 {
+    background: #f4f4f4;
+}
+
+div.aliased {
+    font-size: 95%;
+    padding-left: 4ex;
+}
+
+div.item {
+    /* border-style: solid; */
+    padding-bottom: 5px;
+}
+
+span.kind {
+    color:#880000;
+}
+
+span.path {
+    color:#666600;
+}
+
+span.type {
+    padding-left: 1ex;
+    color:#008800;
+    display: inline-block;
+}
