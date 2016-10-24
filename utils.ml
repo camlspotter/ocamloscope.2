@@ -151,7 +151,7 @@ end
 exception Critical of string
 let criticalf fmt = Exn.raisef (fun x -> Critical x) fmt
   
-let command_name = "extract"
+let command_name = "oco"
 
 module FilePath = struct
   type t = string [@@deriving conv{ocaml}]

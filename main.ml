@@ -20,6 +20,12 @@ module type SubCommand = sig
   val exec : unit -> unit
 end
 
+module Separator = struct
+  let name = ""
+  let summary = ""
+  let exec () = assert false
+end
+  
 module Scrape = struct
   let name = "scrape"
   let summary = "Scrape OCamlFind packages"
@@ -78,16 +84,16 @@ module Link = struct
     ignore & Datalink.link_db !data_dir
 end
 
-module Dumpsearch = struct
-  let name = "dumpsearch"
+module Dumpdb = struct
+  let name = "dumpdb"
   let summary = "Dump the final data base"
   let exec () =
     Arg.parse 
       [ opt_data_dir
       ]
-      (fun _ -> failwith "dumpsearch does not take arguments")
-    & String.concat "" [ !% "%s dumpsearch [ options ]\n" command_name
-                       ; !% "  Dump search items.\n"
+      (fun _ -> failwith "dumpdb does not take arguments")
+    & String.concat "" [ !% "%s dumpdb [ options ]\n" command_name
+                       ; !% "  Dump all the search db items.  The output may be very huge.\n"
                        ];
     Search.dump !data_dir
 end
@@ -127,15 +133,15 @@ module Package = struct
       (Ocaml.format_with [%derive.ocaml_of: (Ocamlfind.Analyzed_group.t * Opam.Package.t list) list] ) ps
 end
 
-module Dump = struct
-  let name = "dump"
+module Dumphump = struct
+  let name = "dumphump"
   let summary = "Dump hump data"
   let exec () =
     let rev_anon_args = ref [] in
     Arg.parse [ opt_data_dir
               ]
       (fun x -> rev_anon_args +::= x)
-    & String.concat "" [ !% "%s dump [ packages ]\n" command_name
+    & String.concat "" [ !% "%s dumphump [ packages ]\n" command_name
                        ; !% "  Dump hump data.\n"
                        ; !% "  If no packages are specified, stdlib is dumped.\n"
                        ];
@@ -147,7 +153,7 @@ end
 
 module Evaltest = struct
   let name = "evaltest"
-  let summary = "Eval package humps and print the result\n"
+  let summary = "Eval package humps and print the result"
   let exec () =
     let rev_anon_args = ref [] in
     Arg.parse [ opt_data_dir
@@ -210,10 +216,11 @@ let subcommands : (module SubCommand) list =
   [ (module Scrape)
   ; (module Link)
   ; (module Search)
-  ; (module Dumpsearch)
+  ; (module Separator)
   ; (module Package)
   ; (module Test)
-  ; (module Dump)
+  ; (module Dumpdb)
+  ; (module Dumphump)
   ; (module Evaltest)
   ; (module Flattest)
   ; (module Cmtest)
@@ -225,9 +232,12 @@ let () =
       let module M = (val m : SubCommand) in
       M.name, (M.exec, M.summary)) subcommands
   in
-  let subcommands_help = map (fun (n,(_,s)) -> 
-    !%"\t%s %s [ options ]\t: %s\n" command_name n s) subcommands
+  let subcommands_help = map (fun (n,(_,s)) ->
+    if n = "" then "\n"
+    else !%"\t%s %s [ options ]\t: %s\n" command_name n s
+  ) subcommands
   in
+  let subcommands = filter (fun (n, _) -> n <> "") subcommands in
   let global_help =
     String.concat ""
       & [ !%"NAME\n"

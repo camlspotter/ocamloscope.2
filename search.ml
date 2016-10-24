@@ -32,14 +32,15 @@ let rec search db pspec =
     | _ -> assert false
   in
   search db pspec'
-  
+
+let unsafe_load data_dir = Data.DB.unsafe_load (data_dir ^/ "all.all")
+
 let do_search data_dir =
-  let db = Data.DB.unsafe_load (data_dir ^/ "all.all") in
+  let db = unsafe_load data_dir in
   search db & Query.PackageSpec.Vanilla []
 
 let dump data_dir =
-  let open Data.DB in
-  let db = Datalink.link_db data_dir in
+  let db = unsafe_load data_dir in
   flip iter db.items & fun i ->
     !!% "%a@."
       (Ocaml.format_with [%derive.ocaml_of: (Sig.k * Hump.path * Sig.res)])
