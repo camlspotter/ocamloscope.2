@@ -266,6 +266,8 @@ end
 
 let package_stamp ts =
   fst & uniq_dup_sorted compare & sort compare & map (fun t -> t.digest) ts
+
+let warned_traverses = ref []
     
 let guess p =
   let m = module_name p in
@@ -319,11 +321,13 @@ let guess p =
               []
           | Some apgs ->
               traverse_and_find apgs |- fun res ->
-                if res = [] then !!% "Warning: guess: returned [] for %s at traverse_and_find (with opam build %s) apgs=%a@."
-                  m
-                  n
-                  Format.(list "@ " string)
-                  (map (fun apg -> apg.Ocamlfind.Analyzed_group.name) apgs)
+                if res = [] then 
+                  if add_if_not_mem (m,n) warned_traverses = `NewlyAdded then  
+                    !!% "Warning: guess: returned [] for %s at traverse_and_find (with opam build %s) apgs=%a@."
+                      m
+                      n
+                      Format.(list "@ " string)
+                      (map (fun apg -> apg.Ocamlfind.Analyzed_group.name) apgs)
       end
   | Some (`OCamlFindLib []) -> assert false
   | Some (`OCamlFindLib (dir::_)) ->

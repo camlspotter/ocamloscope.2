@@ -996,6 +996,7 @@ module Rewrite = struct
   let notfound = Ident.create "NOTOP"
   
   let warned_rewrite_idents = ref []
+  let warned_paths = ref []
   let warned_rewrite_cmis = ref []
       
   let rec rewrite f p = match p with
@@ -1009,7 +1010,8 @@ module Rewrite = struct
           | Some p ->
               match Cm.guess p with
               | [] ->
-                  !!% "Warning: package_path: package of %s was not found@." p;
+                  if add_if_not_mem p warned_paths = `NewlyAdded then
+                    !!% "Warning: package_path: package of %s was not found@." p;
                   Pident notfound
               | [{Cm.ocamlfinds=[]} as cm] ->
                   (* Unreachable 
