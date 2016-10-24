@@ -33,6 +33,7 @@ FILES[]=
   t28_monad
   t29_virtual
   t30_typedtreeMap
+  t31_method
 
 NO_INSTALL=true
 PROGRAM=dummy
