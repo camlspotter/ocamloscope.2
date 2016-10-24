@@ -28,6 +28,15 @@ div.group1 {
     background: #f4f4f4;
 }
 
+div.original {
+    padding-bottom: 3px;
+}
+
+div.aliases {
+    font-size: 75%;
+    padding-bottom: 3px;
+}
+
 div.aliased {
     font-size: 95%;
     padding-left: 4ex;

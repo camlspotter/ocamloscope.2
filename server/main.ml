@@ -242,20 +242,24 @@ let print_summary (sum : ( (Sig.k * Data.alias)
           H.div [
             match alias with
             | Data.Primitive n ->
-                H.div [ spans ~a:[H.a_class ["kind"]] "primitive "
-                      ; spans n
-                      ]
+                H.div ~a: [H.a_class [ "original" ]]
+                  [ spans ~a:[H.a_class ["kind"]] "primitive "
+                  ; spans n
+                  ]
             | Path p ->
-                H.div [ spans ~a:[H.a_class ["kind"]] (Sig.string_of_k k ^ " ")
-                      ; hpath p
-                      ]
+                H.div ~a: [H.a_class [ "original" ]]
+                  [ spans ~a:[H.a_class ["kind"]] (Sig.string_of_k k ^ " ")
+                  ; hpath p
+                  ]
           ]
       | _ ->
           H.div & map (fun (_,i,_,_) -> fsignature_item i) nonaliased
     in
     let aliased = match aliased with
       | [] -> []
-      | _ -> [ H.div ~a:[H.a_class ["aliased"]] & map (fun (_,i,_,_) -> fsignature_item i) aliased ]
+      | _ -> [ H.div ~a:[H.a_class ["aliased"]]
+               & H.div ~a:[H.a_class ["aliases"]] [ H.pcdata "aliases:" ]
+                 :: map (fun (_,i,_,_) -> fsignature_item i) aliased ]
     in
     H.div ~a:[ H.a_class [ "group" ^ string_of_int (i mod 2) ] ]
       & [ nonaliased ]
