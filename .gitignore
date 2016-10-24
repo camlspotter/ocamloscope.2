@@ -2,6 +2,11 @@
 *~
 *.omc
 *.exe
+*.cm*
+*.o
+*.opt
+*.run
+*.annot
 .omakedb
 .depend
 OMakeroot
