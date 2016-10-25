@@ -13,7 +13,14 @@ let%html to_ocaml = "<a href='ocaml.org'>OCaml!</a>"
 let html_to_string html =
   let b = Buffer.create 1000 in
   let ppf = Format.formatter_of_buffer b in
-  Html.pp () ppf html;
+  H.pp () ppf html;
+  Buffer.contents b
+
+(** Same as [html_to_string] but takes any elt *)
+let html_elt_to_string html =
+  let b = Buffer.create 1000 in
+  let ppf = Format.formatter_of_buffer b in
+  H.pp_elt () ppf html;
   Buffer.contents b
 
 let%html oc_header = {|
@@ -25,7 +32,7 @@ let%html oc_header = {|
 |}
     
 let respond ~status html =
-  let headers = Cohttp.Header.of_list ["Content-type", "text/html"] in
+  let headers = Cohttp.Header.of_list ["Content-type", "text/html"; "Access-Control-Allow-Origin", "*"] in
   Server.respond_string ~headers ~status ~body:(html_to_string html) ()
 
 let spans ?a s = H.span ?a [ H.pcdata s ]
@@ -41,21 +48,20 @@ let query_form pspec (v : string) =
     if p pspec then [H.a_value v; H.a_selected ()]
     else [H.a_value v]
   in
-  let open Html in
   [%html {| <div class="query">
               <span class="logo">OC&#x1f441;</span>
               <form action="/" method="get"> |}
-                [ pcdata "Query: "; input ~a:[ a_input_type `Text; a_name "q"; a_value v] ()
-                ; input ~a:[ a_input_type `Submit; a_style "visibility: hidden;"] () 
-                ; br ()
-                ; pcdata " Packages: "
-                ; select ~a: [ a_name "packtype" ]
-                    [ option ~a:(mk_option "vanilla" (function Vanilla _ -> true | _ -> false)) (pcdata "Vanilla and")
-                    ; option ~a:(mk_option "allbut" (function All_but _ -> true | _ -> false)) (pcdata "All but")
-                    ; option ~a:(mk_option "just" (function Just _ -> true | _ -> false)) (pcdata "Just")
+                [ H.pcdata "Query: "; H.input ~a:[ H.a_input_type `Text; H.a_name "q"; H.a_value v] ()
+                ; H.input ~a:[ H.a_input_type `Submit; H.a_style "visibility: hidden;"] () 
+                ; H.br ()
+                ; H.pcdata " Packages: "
+                ; H.select ~a: [ H.a_name "packtype" ]
+                    [ H.option ~a:(mk_option "vanilla" (function Vanilla _ -> true | _ -> false)) (H.pcdata "Vanilla and")
+                    ; H.option ~a:(mk_option "allbut" (function All_but _ -> true | _ -> false)) (H.pcdata "All but")
+                    ; H.option ~a:(mk_option "just" (function Just _ -> true | _ -> false)) (H.pcdata "Just")
                     ]
-                ; pcdata " "
-                ; input ~a:[ a_input_type `Text; a_name "packs"; a_value (String.concat " " packs)] () ]
+                ; H.pcdata " "
+                ; H.input ~a:[ H.a_input_type `Text; H.a_name "packs"; H.a_value (String.concat " " packs)] () ]
          {|   </form>
             </div> |}
   ]
@@ -266,9 +272,9 @@ let print_summary (sum : ( (Sig.k * Data.alias)
         @ aliased
         @ [ H.br () ]
   in
-  mapi group sum
+  H.div ~a:[H.a_id "result"] & mapi group sum
     
-let query data qs =
+let query ngrok_mode data qs =
   let open Html in
   let pspec =
     match assoc_opt "packtype" qs, assoc_opt "packs" qs with
@@ -280,51 +286,37 @@ let query data qs =
         Query.PackageSpec.All_but (String.split (function ' ' -> true | _ -> false) s)
     | _ -> Query.PackageSpec.Vanilla []
   in
-  match assoc_opt "q" qs with
-  | None -> 
-      respond ~status:(`Code 200)
-      & html oc_header
-      & body & [ query_form pspec "" ]
+  let qstr, status, bs =
+    match assoc_opt "q" qs with
+    | None -> "", `Code 200, []
 
-  | Some [qstr] ->
-      begin match Query.parse qstr with
-      | [] ->
-          respond ~status:`Bad_request
-          & html oc_header
-          & body & [ query_form pspec qstr ]
-      | qs -> 
-          let res = Exn.catch_ & fun () -> Query.query data pspec qs in
-          match res with  
-          | `Ok res ->
-(*
-              let str = 
-                let open Format in
-                let b = Buffer.create 1000 in
-                let ppf = formatter_of_buffer b in
-                Summary.group_and_print ppf res;
-                fprintf ppf "That's all@.";
-                Buffer.contents b
-              in
-              respond ~status:`OK
-              & html oc_header
-              & body & query_form qstr @ [pre [pcdata str]]
-*)
-              respond ~status:`OK
-              & html oc_header
-              & body & query_form pspec qstr :: print_summary (Summary.group res)
-          | `Error (`Exn e) -> 
-              let str =
-                let trace = Exn.get_backtrace () in
-                !% "Uncaught exception: %s\nBacktrace:\n%s\n" (Exn.to_string e) trace
-              in
-              respond ~status:`Internal_server_error
-              & html oc_header
-              & body & query_form pspec qstr :: [p [pcdata str]]
-      end
-  | Some _ ->
-      respond ~status:`Bad_request
-      & html oc_header
-      & body & query_form pspec "" (* XXX *) :: [p [pcdata "Illegal comma separated query"]]
+    | Some [qstr] ->
+        begin match Query.parse qstr with
+        | [] -> qstr, `Bad_request, []
+        | qs -> 
+            let res = Exn.catch_ & fun () -> Query.query data pspec qs in
+            match res with  
+            | `Ok [] ->
+                qstr, `OK, [ H.pcdata "Empty result" ]
+            | `Ok res ->
+                qstr, `OK, [ print_summary (Summary.group res) ]
+            | `Error (`Exn e) -> 
+                let str =
+                  let trace = Exn.get_backtrace () in
+                  !% "Uncaught exception: %s\nBacktrace:\n%s\n" (Exn.to_string e) trace
+                in
+                qstr, `Internal_server_error, [p [pcdata str]]
+        end
+    | Some _ -> "", `Bad_request, [p [pcdata "Illegal comma separated query"]]
+  in
+
+  if ngrok_mode then
+    let headers = Cohttp.Header.of_list ["Content-type", "text/html"; "Access-Control-Allow-Origin", "*"] in
+    Server.respond_string ~headers ~status ~body:(html_elt_to_string (H.div bs)) ()
+  else
+    respond ~status
+    & html oc_header
+    & body & query_form pspec qstr :: bs
 
 let if_modified_since h =
   let f s =
@@ -387,33 +379,36 @@ let respond_file_in_memory p ctype h =
       else Some (s, mt)
 
 let style_css = respond_file_in_memory "style.css" "text/css"
-let ngrok_js = respond_file_in_memory "../ngrok/style.css" "application/javascript"
+let ngrok_js = respond_file_in_memory "../ngrok/ngrok.js" "application/javascript"
+let ngroklocal_html = respond_file_in_memory "../ngrok/ngroklocal.html" "text/html"
 
-let server port data =
+let server ngrok_mode port data =
   let callback _conn req _body =
     let uri = Request.uri req in
     match Uri.path uri with
     | "/style.css"  -> style_css req.Request.headers 
-    | "/ngrok.js"   -> ngrok_js req.Request.headers
-    | "/" -> query data & Uri.query uri
+    | "/ngrok.js" when ngrok_mode -> ngrok_js req.Request.headers
+    | "/ngroklocal.html" when ngrok_mode -> ngroklocal_html req.Request.headers
+    | "/" -> query ngrok_mode data & Uri.query uri
     | _ ->
-        prerr_endline & Uri.path uri;
         respond ~status:(`Code 404)
         & H.html oc_header  
-        & H.body [ query_form (Query.PackageSpec.Vanilla []) "" ]
+        & H.body [ H.span [ H.pcdata "404" ]]
   in
   Server.create ~mode:(`TCP (`Port port)) (Server.make ~callback ())
 
 let () = 
   let port = ref 80 in
   let data_dir = ref "../out" in
+  let ngrok_mode = ref false in
   Arg.parse 
     [ "--port", Arg.Int (fun x -> port := x), "port (default is 80)"
     ; "--data-dir", Arg.String (fun s -> data_dir := s), "data dir (default \"../out\")" 
+    ; "--ngrok", Arg.Set ngrok_mode, "undocumented"
     ]
     (fun _ -> failwith "does not take any anonymous arguments")
     "server --port x --data_dir d";
   let data = Data.DB.unsafe_load (!data_dir ^/ "all.all") in
-  ignore (Lwt_main.run (server !port data))
+  ignore (Lwt_main.run (server !ngrok_mode !port data))
 
 

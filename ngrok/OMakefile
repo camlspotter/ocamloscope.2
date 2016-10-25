@@ -1,0 +1,21 @@
+# OCamlRequirePackages(lwt js_of_ocaml tyxml js_of_ocaml.ppx tyxml-ppx)
+OCamlRequirePackages(lwt js_of_ocaml js_of_ocaml.ppx)
+
+MyOCamlJSProgram(name, files) =
+    NATIVE_ENABLED = false
+
+    OCAML_PREINSTALLED_PACKS[] =
+    OCAMLPACKS[] = lwt js_of_ocaml js_of_ocaml.ppx
+
+    NO_INSTALL=true
+    MyOCamlProgram($(name), $(files))
+
+    $(name).js: ./$(name).run
+        js_of_ocaml $<
+
+    .DEFAULT: $(name).js
+
+    export # Need to export the rules for lwt and others
+
+MyOCamlJSProgram(ngrok, ngrok xjs)
+export

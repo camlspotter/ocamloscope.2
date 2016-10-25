@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+          "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="UTF-8">
+    <title>OCamlOScope.2 server</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="text/javascript" src="ngrok.js"></script>
+  </head>
+  <body>
+    <div class="query">
+      <span class="logo">OC👁</span>
+      <form id="form" action="">
+	Query: <input type="text" name="q" value=""/>
+	<input type="submit"/>
+	<br/>
+	Packages:
+	<select name="packtype">
+	  <option value="vanilla" selected="selected">Vanilla and</option>
+	  <option value="allbut">All but</option>
+	  <option value="just">Just</option>
+	</select>
+	<input type="text" name="packs" value=""/>
+      </form>
+    </div>
+    <div id="insert"/>
+  </body>
+</html>
