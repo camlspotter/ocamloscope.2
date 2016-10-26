@@ -326,42 +326,76 @@ let query data qs =
       & html oc_header
       & body & query_form pspec "" (* XXX *) :: [p [pcdata "Illegal comma separated query"]]
 
-let lazy_file p =
+let if_modified_since h =
+  let f s =
+    (* prerr_endline ("< " ^ s); *)
+    match Netdate.since_epoch & Netdate.parse s with
+    | n ->
+        (* !!% "< epoch %f@." n; *)
+        `Ok n
+    | exception _e -> `Error (`Date_parse_failed s)
+  in
+  Option.fmap f & Cohttp.Header.get h "If-Modified-Since"
+
+(** memory stored file, but checks mtime to reload if the source is modified *)
+let file_in_memory p =
   let open Unix in
   let mtime = ref 0.0 in
   let s = ref "" in
-  fun () ->
+  let update () =
     let st = stat p in
-    if !mtime = st.st_mtime then !s
+    if !mtime = st.st_mtime then !s, !mtime
     else begin
       mtime := st.st_mtime; 
       s := from_Ok & File.to_string p;
-      !s
+      !s, !mtime
     end
+  in
+  ignore & update ();
+  update
 
-let style_css = lazy_file "style.css"
+let respond_file_in_memory p ctype h =
+  let file = file_in_memory p in
+  let f = function
+    | None ->
+        (* prerr_endline "304"; *)
+        Server.respond_string
+          ~status: `Not_modified
+          ~headers: (Cohttp.Header.of_list [])
+          ~body: ""
+          ()
+    | Some (s, n) ->
+        (* prerr_endline "200"; *)
+        Server.respond_string
+          ~status: `OK
+          ~headers:(Cohttp.Header.of_list
+                      [ "Content-Type",   ctype
+                      ; "Content-Length", string_of_int & String.length s
+                      ; "Last-Modified",  Netdate.mk_mail_date n
+                      ])
+          ~body: s
+          ()
+  in
+  f & match if_modified_since h with
+  | None -> Some (file ())
+  | Some (`Error (`Date_parse_failed s)) ->
+      !!% "If-Modified-Since: date parse failed: %s@." s;
+      Some (file ())
+  | Some (`Ok ims) ->
+      let s, mt = file () in
+      if mt <= ims then None
+      else Some (s, mt)
+
+let style_css = respond_file_in_memory "style.css" "text/css"
+let ngrok_js = respond_file_in_memory "../ngrok/style.css" "application/javascript"
 
 let server port data =
   let callback _conn req _body =
     let uri = Request.uri req in
     match Uri.path uri with
-    | "/style.css" ->
-        (* XXX need to check last-modified thing *)
-        let headers = Cohttp.Header.of_list ["Content-type", "text/css"] in
-        Server.respond_string ~headers ~status:(`Code 200) ~body:(style_css ()) ()
-      (* "/favicon.ico" *)
-    | "/" -> 
-        let qs = Uri.query uri in
-        (* let meth = req |> Request.meth |> Code.string_of_method in *) (* we do not care *)
-        (* let headers = req |> Request.headers |> Header.to_string in *) (* we do not care *)
-        (*
-        body |> Cohttp_lwt_body.to_string >|= (fun body ->
-          (Printf.sprintf "Uri: %s\nMethod: %s\nHeaders\nHeaders: %s\nBody: %s"
-             uri meth headers body))
-        >>= (fun body -> Server.respond_string ~status:`OK ~body ())
-        *)
-        (* query data Query.PackageSpec.vanilla qs *)
-        query data qs
+    | "/style.css"  -> style_css req.Request.headers 
+    | "/ngrok.js"   -> ngrok_js req.Request.headers
+    | "/" -> query data & Uri.query uri
     | _ ->
         prerr_endline & Uri.path uri;
         respond ~status:(`Code 404)
