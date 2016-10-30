@@ -21,6 +21,7 @@ let html_elt_to_string html =
   let b = Buffer.create 1000 in
   let ppf = Format.formatter_of_buffer b in
   H.pp_elt () ppf html;
+  Format.pp_print_flush ppf ();
   Buffer.contents b
 
 let%html oc_header = {|
@@ -297,7 +298,7 @@ let query ngrok_mode data qs =
             let res = Exn.catch_ & fun () -> Query.query data pspec qs in
             match res with  
             | `Ok [] ->
-                qstr, `OK, [ H.pcdata "Empty result" ]
+                qstr, `OK, [ H.div [ H.pcdata "Empty result" ] ]
             | `Ok res ->
                 qstr, `OK, [ print_summary (Summary.group res) ]
             | `Error (`Exn e) -> 
@@ -310,10 +311,10 @@ let query ngrok_mode data qs =
     | Some _ -> "", `Bad_request, [p [pcdata "Illegal comma separated query"]]
   in
 
-  if ngrok_mode then
+  if ngrok_mode then begin
     let headers = Cohttp.Header.of_list ["Content-type", "text/html"; "Access-Control-Allow-Origin", "*"] in
     Server.respond_string ~headers ~status ~body:(html_elt_to_string (H.div bs)) ()
-  else
+  end else
     respond ~status
     & html oc_header
     & body & query_form pspec qstr :: bs
