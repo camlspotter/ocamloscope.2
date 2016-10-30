@@ -14,6 +14,7 @@ let html_to_string html =
   let b = Buffer.create 1000 in
   let ppf = Format.formatter_of_buffer b in
   H.pp () ppf html;
+  Format.pp_print_flush ppf ();
   Buffer.contents b
 
 (** Same as [html_to_string] but takes any elt *)
