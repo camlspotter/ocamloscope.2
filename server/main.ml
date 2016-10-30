@@ -277,7 +277,6 @@ let print_summary (sum : ( (Sig.k * Data.alias)
   H.div ~a:[H.a_id "result"] & mapi group sum
     
 let query ngrok_mode data qs =
-  let open Html in
   let pspec =
     match assoc_opt "packtype" qs, assoc_opt "packs" qs with
     | (Some ["vanilla"] | None), Some [s] ->
@@ -290,16 +289,16 @@ let query ngrok_mode data qs =
   in
   let qstr, status, bs =
     match assoc_opt "q" qs with
-    | None -> "", `Code 200, []
+    | None -> "", `Code 200, [ H.pcdata "Empty query" ]
 
     | Some [qstr] ->
         begin match Query.parse qstr with
-        | [] -> qstr, `Bad_request, []
+        | [] -> qstr, `Bad_request, [ H.pcdata "Query parse failure" ]
         | qs -> 
             let res = Exn.catch_ & fun () -> Query.query data pspec qs in
             match res with  
             | `Ok [] ->
-                qstr, `OK, [ H.div [ H.pcdata "Empty result" ] ]
+                qstr, `OK, [ H.pcdata "Empty result" ]
             | `Ok res ->
                 qstr, `OK, [ print_summary (Summary.group res) ]
             | `Error (`Exn e) -> 
@@ -307,9 +306,9 @@ let query ngrok_mode data qs =
                   let trace = Exn.get_backtrace () in
                   !% "Uncaught exception: %s\nBacktrace:\n%s\n" (Exn.to_string e) trace
                 in
-                qstr, `Internal_server_error, [p [pcdata str]]
+                qstr, `Internal_server_error, [ H.pcdata str ]
         end
-    | Some _ -> "", `Bad_request, [p [pcdata "Illegal comma separated query"]]
+    | Some _ -> "", `Bad_request, [ H.pcdata "Illegal comma separated query" ]
   in
 
   if ngrok_mode then begin
@@ -317,8 +316,8 @@ let query ngrok_mode data qs =
     Server.respond_string ~headers ~status ~body:(html_elt_to_string (H.div bs)) ()
   end else
     respond ~status
-    & html oc_header
-    & body & query_form pspec qstr :: bs
+    & H.html oc_header
+    & H.body & query_form pspec qstr :: bs
 
 let if_modified_since h =
   let f s =
