@@ -13,6 +13,7 @@ val humpfile   : Data.HumpFile.t   -> Data.HumpFile.t
 val dat_t      : Data.Dat.t        -> Data.Dat.t
 val location_t : Location.t        -> Location.t
 val hump_expr  : Hump.expr         -> Hump.expr
+val hump_v     : Hump.v            -> Hump.v
   
 val reset : unit -> unit
 (** Reset the hashcons cache. *)

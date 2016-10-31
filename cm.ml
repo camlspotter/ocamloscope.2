@@ -269,6 +269,7 @@ let package_stamp ts =
 
 let warned_traverses = ref []
     
+(* XXX this triggers big scanning of packages, even in the test mode *)
 let guess p =
   let m = module_name p in
   let cmi = Filename.change_extension ~ext:".cmi" p in

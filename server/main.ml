@@ -89,156 +89,166 @@ let fsignature_item i =
   let ((k,p),res) = fsignature_item i in
   let hk = spans ~a:[H.a_class ["kind"]] (Sig.string_of_k k ^ " ") in
   let hp = hpath p in
-  H.div ~a: [ H.a_class [ "item" ] ] &
-  match res with
-  | FValue (ty, _) -> [ hk; hp; spans " : "; htype ty ]
-  (* | FValue (ty, SVal_prim) -> [ spans "external"; hp; spans " : "; htype ty ] *)
-  | FModule _ -> [ hk; hp; spans " : "; spans "sig ... end" ]
-  | FModtype None -> [ hk; hp ]
-  | FModtype (Some _) -> [ hk; hp; spans " = "; spans "sig ... end" ]
-  | FType (pars, tk, pf, aliaso, rs) -> (* Trec_not or other *)
-      hk
-      :: (match rs with Trec_not -> [ spans "norec" ] | _ -> [])
-      @ htyparams pars
-      @ [ hp ]
-      @ (match aliaso with None -> [] | Some ty -> [ spans " = "; htype ty ])
-      @ (match tk with
-         | FAbstract -> []
-         | FOpen -> [ spans " = "; spans ".." ]
-         | FRecord fsig ->
-             let field = function
-               | ((_, p), FRecordField (Immutable, ty)) ->
-                   H.span [ hpath p
-                          ; spans " : "
-                          ; htype ty
-                          ]
-               | ((_, p), FRecordField (Mutable, ty)) ->
-                   H.span [ spans "mutable "
-                          ; hpath p
-                          ; spans " : "
-                          ; htype ty
-                          ]
-               | _ -> assert false
-             in
-             spans " = "
-             :: (if pf = Private then [ spans "private" ] else [])
-             @ [ spans "{ "; H.div (map field fsig); spans " }" ]
-         | FVariant fsig ->
-             let constr = function
-               | ((_, p), FVariantConstructor (ty, None)) ->
-                   begin match ty with
-                   | Otyp_arrow (_, ty, _) ->
-                       H.span [ spans " | "; hpath p; spans " of "; htype ty ] 
-                   | _ ->
-                       H.span [ spans " | "; hpath p] 
-                   end
-               | ((_, p), FVariantConstructor (ty, Some _)) -> (* XXX I guess the return type is integrated into ty already *)
-                   H.span [ spans " | "; hpath p; spans " : "; htype ty ] 
-               | _ -> assert false
-             in
-             spans " = "
-             :: (if pf = Private then [ spans "private" ] else [])
-             @ [ H.div (map constr fsig); ]
-        )
-  | FRecordField (Immutable, ty) -> [ hk; hp; spans " : "; htype ty ]
-  | FRecordField (Mutable, ty) -> [ hk; spans "mutable"; hp; spans " : "; htype ty ]
+  let fsig = 
+    H.div ~a: [ H.a_class [ "fsig" ] ] &
+    match res with
+    | FValue (ty, _) -> [ hk; hp; spans " : "; htype ty ]
+    (* | FValue (ty, SVal_prim) -> [ spans "external"; hp; spans " : "; htype ty ] *)
+    | FModule _ -> [ hk; hp; spans " : "; spans "sig ... end" ]
+    | FModtype None -> [ hk; hp ]
+    | FModtype (Some _) -> [ hk; hp; spans " = "; spans "sig ... end" ]
+    | FType (pars, tk, pf, aliaso, rs) -> (* Trec_not or other *)
+        hk
+        :: (match rs with Trec_not -> [ spans "norec" ] | _ -> [])
+        @ htyparams pars
+        @ [ hp ]
+        @ (match aliaso with None -> [] | Some ty -> [ spans " = "; htype ty ])
+        @ (match tk with
+           | FAbstract -> []
+           | FOpen -> [ spans " = "; spans ".." ]
+           | FRecord fsig ->
+               let field = function
+                 | ((_, p), FRecordField (Immutable, ty)) ->
+                     H.span [ hpath p
+                            ; spans " : "
+                            ; htype ty
+                            ]
+                 | ((_, p), FRecordField (Mutable, ty)) ->
+                     H.span [ spans "mutable "
+                            ; hpath p
+                            ; spans " : "
+                            ; htype ty
+                            ]
+                 | _ -> assert false
+               in
+               spans " = "
+               :: (if pf = Private then [ spans "private" ] else [])
+               @ [ spans "{ "; H.div (map field fsig); spans " }" ]
+           | FVariant fsig ->
+               let constr = function
+                 | ((_, p), FVariantConstructor (ty, None)) ->
+                     begin match ty with
+                     | Otyp_arrow (_, ty, _) ->
+                         H.span [ spans " | "; hpath p; spans " of "; htype ty ] 
+                     | _ ->
+                         H.span [ spans " | "; hpath p] 
+                     end
+                 | ((_, p), FVariantConstructor (ty, Some _)) -> (* XXX I guess the return type is integrated into ty already *)
+                     H.span [ spans " | "; hpath p; spans " : "; htype ty ] 
+                 | _ -> assert false
+               in
+               spans " = "
+               :: (if pf = Private then [ spans "private" ] else [])
+               @ [ H.div (map constr fsig); ]
+          )
+    | FRecordField (Immutable, ty) -> [ hk; hp; spans " : "; htype ty ]
+    | FRecordField (Mutable, ty) -> [ hk; spans "mutable"; hp; spans " : "; htype ty ]
+    
+    | FVariantConstructor (ty, None) -> [ hk; hp; spans " : "; htype ty ] 
+    | FVariantConstructor (ty, Some _) -> [ hk; hp; spans " : "; htype ty ] (* XXX I guess the retun type is integrated into ty already *)
   
-  | FVariantConstructor (ty, None) -> [ hk; hp; spans " : "; htype ty ] 
-  | FVariantConstructor (ty, Some _) -> [ hk; hp; spans " : "; htype ty ] (* XXX I guess the retun type is integrated into ty already *)
-
-  | FTypext (ts, t', rto, pf) ->
-      let args, rt  = match t' with
-        | Otyp_arrow ("", ts, rt) ->
-            begin match ts with
-            | Otyp_tuple ts -> ts, rt
-            | Otyp_record _ -> [ts], rt
-            | _ -> assert false
-            end
-        | _ -> assert false
-      in
-      let oext_type_name = match rt with
-        | Otyp_constr (oi, _) -> hpath oi
-        | _ -> assert false
-      in
-      hk
-      :: htyparams ts
-      @ [ oext_type_name; spans "+=" ]
-      @ (if pf = Private then [ spans "private" ] else [])
-      @ [ hp ]
-      @ (match rto with
-         | None ->
-             begin match args with
-             | [] -> []
-             | _ -> [ spans " of "; htype (Otyp_tuple args) ]
-             end
-         | Some rty ->
-             begin match args with
-             | [] -> [ spans " : "; htype rty ]
-             | _ -> [ spans " : "; htype (Otyp_arrow ("", Otyp_tuple args, rty)) ]
-             end)
-  | FClass (tys, _fs, t, _p, (vf, _r)) -> 
-(*
-      let clt = 
-        let rec f = function
-          | Otyp_arrow (s, t1, t2) -> Octy_arrow (s, t1, f t2)
-          | Otyp_object (meths, _ (* CR jfuruse: todo None: closed, Some true: _.., Some false: .. *) ) ->
-              (* CR jfuruse: we should use fs instead of t? *)
-              Octy_signature (None (* CR jfuruse: self_ty*), 
-                              flip map meths & fun (s,t) ->
-                                Ocsg_method (s, true (*?*), true(*?*), t))
-          | Otyp_alias (t, a) ->
-              (* not sure... *)
-              begin match f t with
-              | Octy_signature (None, xs) ->
-                  Octy_signature (Some (Otyp_var (false, a)), xs)
+    | FTypext (ts, t', rto, pf) ->
+        let args, rt  = match t' with
+          | Otyp_arrow ("", ts, rt) ->
+              begin match ts with
+              | Otyp_tuple ts -> ts, rt
+              | Otyp_record _ -> [ts], rt
               | _ -> assert false
               end
-          | t -> 
-              !!% "?!?!: %s@." (string_of_type t);
-              assert false
+          | _ -> assert false
         in
-        f & M.simplif_type t
-      in
-*)
-      hk
-      :: (if vf = Virtual then [ spans "virtual" ] else [])
-      @ htyparams ~cls:true tys
-      @ [hp] (* XXX how abstract class is encoded?? *)
-      @ [ spans " : "; htype t ]
-
-  | FClassType (pars, _fs, t, _p, (vf, _r)) ->
-(*
-      let clt = 
-        let rec f = function
-          | Otyp_arrow (s, t1, t2) -> Octy_arrow (s, t1, f t2)
-          | Otyp_object (meths, _ (* CR jfuruse: todo None: closed, Some true: _.., Some false: .. *) ) ->
-              (* CR jfuruse: we should use fs instead of t? *)
-              Octy_signature (None (* CR jfuruse: self_ty*), 
-                              flip map meths & fun (s,t) ->
-                                Ocsg_method (s, true (*?*), true(*?*), t))
-          | Otyp_alias (t, a) ->
-              (* not sure... *)
-              begin match f t with
-              | Octy_signature (None, xs) ->
-                  Octy_signature (Some (Otyp_var (false, a)), xs)
-              | _ -> assert false
-              end
-          | t -> 
-              !!% "?!?!: %s@." (string_of_type t);
-              assert false
+        let oext_type_name = match rt with
+          | Otyp_constr (oi, _) -> hpath oi
+          | _ -> assert false
         in
-        f & M.simplif_type t
-      in
-*)
-      hk
-      :: (if vf = Virtual then [ spans "virtual" ] else [])
-      @ htyparams ~cls:true pars
-      @ [hp] (* XXX how abstract class is encoded?? *)
-      @ [ spans " = "; htype t ]
-
-  | FMethod ty -> [ hk; hp; spans " : "; htype ty ]
-  | FTypextRaw _
-  | FVariantConstructorRaw _ -> assert false
+        hk
+        :: htyparams ts
+        @ [ oext_type_name; spans "+=" ]
+        @ (if pf = Private then [ spans "private" ] else [])
+        @ [ hp ]
+        @ (match rto with
+           | None ->
+               begin match args with
+               | [] -> []
+               | _ -> [ spans " of "; htype (Otyp_tuple args) ]
+               end
+           | Some rty ->
+               begin match args with
+               | [] -> [ spans " : "; htype rty ]
+               | _ -> [ spans " : "; htype (Otyp_arrow ("", Otyp_tuple args, rty)) ]
+               end)
+    | FClass (tys, _fs, t, _p, (vf, _r)) -> 
+  (*
+        let clt = 
+          let rec f = function
+            | Otyp_arrow (s, t1, t2) -> Octy_arrow (s, t1, f t2)
+            | Otyp_object (meths, _ (* CR jfuruse: todo None: closed, Some true: _.., Some false: .. *) ) ->
+                (* CR jfuruse: we should use fs instead of t? *)
+                Octy_signature (None (* CR jfuruse: self_ty*), 
+                                flip map meths & fun (s,t) ->
+                                  Ocsg_method (s, true (*?*), true(*?*), t))
+            | Otyp_alias (t, a) ->
+                (* not sure... *)
+                begin match f t with
+                | Octy_signature (None, xs) ->
+                    Octy_signature (Some (Otyp_var (false, a)), xs)
+                | _ -> assert false
+                end
+            | t -> 
+                !!% "?!?!: %s@." (string_of_type t);
+                assert false
+          in
+          f & M.simplif_type t
+        in
+  *)
+        hk
+        :: (if vf = Virtual then [ spans "virtual" ] else [])
+        @ htyparams ~cls:true tys
+        @ [hp] (* XXX how abstract class is encoded?? *)
+        @ [ spans " : "; htype t ]
+  
+    | FClassType (pars, _fs, t, _p, (vf, _r)) ->
+  (*
+        let clt = 
+          let rec f = function
+            | Otyp_arrow (s, t1, t2) -> Octy_arrow (s, t1, f t2)
+            | Otyp_object (meths, _ (* CR jfuruse: todo None: closed, Some true: _.., Some false: .. *) ) ->
+                (* CR jfuruse: we should use fs instead of t? *)
+                Octy_signature (None (* CR jfuruse: self_ty*), 
+                                flip map meths & fun (s,t) ->
+                                  Ocsg_method (s, true (*?*), true(*?*), t))
+            | Otyp_alias (t, a) ->
+                (* not sure... *)
+                begin match f t with
+                | Octy_signature (None, xs) ->
+                    Octy_signature (Some (Otyp_var (false, a)), xs)
+                | _ -> assert false
+                end
+            | t -> 
+                !!% "?!?!: %s@." (string_of_type t);
+                assert false
+          in
+          f & M.simplif_type t
+        in
+  *)
+        hk
+        :: (if vf = Virtual then [ spans "virtual" ] else [])
+        @ htyparams ~cls:true pars
+        @ [hp] (* XXX how abstract class is encoded?? *)
+        @ [ spans " = "; htype t ]
+  
+    | FMethod ty -> [ hk; hp; spans " : "; htype ty ]
+    | FTypextRaw _
+    | FVariantConstructorRaw _ -> assert false
+  in
+  let doc =
+    match 
+      Option.bind i.Data.DB.v Hump.get_doc
+    with
+    | None -> []
+    | Some d ->  [ H.div ~a: [H.a_class [ "docstring" ]] [ H.pcdata d ] ]
+  in
+  H.div ~a: [ H.a_class [ "item" ] ] ( fsig :: doc )
     
 let print_summary (sum : ( (Sig.k * Data.alias)
                            * int

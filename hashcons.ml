@@ -123,7 +123,12 @@ module Hump_v = struct
   let rec hump_v v =
     try Hashtbl.find cache v with Not_found ->
       let v'  = match v with
-        | Hump.Def (p, l, dopt) -> Hump.Def (Out_ident.hcons p, Location.t l, Option.fmap String.hcons dopt)
+        | Hump.Def { path= p; loc= l; digest= dopt; doc } ->
+            Hump.Def { path= Out_ident.hcons p
+                     ; loc= Location.t l
+                     ; digest= Option.fmap String.hcons dopt
+                     ; doc= Option.fmap String.hcons doc
+                     }
         | Hump.Prim n -> Prim (String.hcons n)
         | Aliased (v1, v2) -> Aliased (hump_v v1, hump_v v2)
         | Coerced (v1, v2) -> Coerced (hump_v v1, hump_v v2)
@@ -242,6 +247,7 @@ let out_ident  = Out_ident.hcons
 let out_type   = Out_type.hcons
 let fsignature = Sig.fsignature
 let location_t = Location.t
+let hump_v     = Hump_v.hump_v
 let hump_expr  = Hump.expr
 
 let sigfile {Data.SigFile.name; packs; stamp} =

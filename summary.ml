@@ -106,22 +106,36 @@ let final_print ppf (g : ((Sig.k * alias) * int * (int * DB.item * 'trace1 * 'tr
   let nonaliased, aliased = partition (fun (_,i,_,_) -> i.alias = None) & flatten xss in
   let (!!%) fmt = Format.fprintf ppf fmt in
   let fsig (_,i,_,_) = Data.DB.fsignature_item i in
+
+  let doc (_,i,_,_) = Option.bind i.DB.v Hump.get_doc in
+
+  let format_item ppf x =
+    let fsig = fsig x in
+    let doc = doc x in
+    match doc with
+    | None -> 
+        Sigext.Print.fsignature_item false ppf fsig
+    | Some doc ->
+        Format.fprintf ppf "@[<v>%a@,(** %s *)@]"
+          (Sigext.Print.fsignature_item false) fsig
+          doc
+  in
   match nonaliased with
   | [] ->
       !!% "@[<v4>%d : @[%a@]@ aliases:@   @[<v>%a@]@]@.@."
         d
         format_alias a
-        (Format.list "@ " (Sigext.Print.fsignature_item false (* nonrec *))) (map fsig aliased)
+        (Format.list "@ " format_item) aliased
   | _ ->
       match aliased with
       | [] ->
           !!% "@[%d : @[<v>%a@]@]@.@."
             d
-            (Format.list "@ " (Sigext.Print.fsignature_item false (* nonrec *))) (map fsig nonaliased)
+            (Format.list "@ " format_item) nonaliased
       | _ -> 
           !!% "@[<v4>%d : @[<v>%a@]@ aliases:@   @[<v>%a@]@]@.@."
             d
-            (Format.list "@ " (Sigext.Print.fsignature_item false (* nonrec *))) (map fsig nonaliased)
-            (Format.list "@ " (Sigext.Print.fsignature_item false (* nonrec *))) (map fsig aliased)
+            (Format.list "@ " format_item) nonaliased
+            (Format.list "@ " format_item) aliased
             
 let group_and_print ppf = final_print ppf *< group

@@ -14,11 +14,17 @@ and location = Location.t = { loc_start: position; loc_end: position; loc_ghost:
   [@@deriving conv{ocaml_of}, typerep]
 
 type v =
-  | Def     of path * location * Digest.t option
+  | Def     of def
   | Aliased of v * v (*+ Aliased (v1, v2): thing defined originally at v2 is aliased at v1 *)
   | Coerced of v * v
   | LocNone
   | Prim of string (*+ ex. "%addint" *)
+
+and def = { path   : path
+          ; loc    : location
+          ; digest : Digest.t option (** source file digest *)
+          ; doc    : string option
+          }
 
 and id = k * string
 
@@ -49,3 +55,7 @@ and expr =
 [@@deriving conv{ocaml_of}, typerep]
 
 val format : Format.t -> expr -> unit
+
+val get_doc : v -> string option
+(* Get the best docstring. XXX not well tested *)
+  

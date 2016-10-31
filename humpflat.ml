@@ -78,7 +78,11 @@ let flatten p me =
     in
     sigitem x
   in
-  ((KModule, p), Def (p, Location.none, None)) (* XXX good Hump.v for the entire file *)
+  ((KModule, p), Def { path= p
+                     ; loc= Location.none
+                     ; digest= None
+                     ; doc= None (*XXX*)
+                     }) (* XXX good Hump.v for the entire file *)
   :: mexp p me
 
 let flatten p me =
