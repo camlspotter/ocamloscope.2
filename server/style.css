@@ -1,3 +1,7 @@
+body * {
+  max-height: 1000000em; /* required for Android Chrome */
+}
+
 body {
     font-family: Arial,Helvetica,Sans-Serif;
 }
@@ -11,21 +15,32 @@ div.query {
     padding-bottom: 20px;
 }
 
-div.query input {
-    width: 30ex;
+input#q {
+    width: 50ex;
     font-size: 110%;
 }
 
-div.query select {
+input#packs {
+    width: 50ex;
+    font-size: 110%;
+}
+
+input#submit {
+    font-size: 110%;
+}
+
+select#packtype {
     font-size: 110%;
 }
 
 div.group0 {
     background: #e8e8e8;
+    padding: 3px;
 }
 
 div.group1 {
     background: #f4f4f4;
+    padding: 3px;
 }
 
 div.original {

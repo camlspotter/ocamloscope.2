@@ -53,17 +53,17 @@ let query_form pspec (v : string) =
   [%html {| <div class="query">
               <span class="logo">OC&#x1f441;</span>
               <form action="/" method="get"> |}
-                [ H.pcdata "Query: "; H.input ~a:[ H.a_input_type `Text; H.a_name "q"; H.a_value v] ()
-                ; H.input ~a:[ H.a_input_type `Submit; H.a_style "visibility: hidden;"] () 
+                [ H.pcdata "Query: "; H.input ~a:[ H.a_input_type `Text; H.a_id "q"; H.a_name "q"; H.a_value v] ()
+                ; H.input ~a:[ H.a_input_type `Submit; H.a_id "submit" ] () 
                 ; H.br ()
                 ; H.pcdata " Packages: "
-                ; H.select ~a: [ H.a_name "packtype" ]
+                ; H.select ~a: [ H.a_name "packtype"; H.a_id "packtype" ]
                     [ H.option ~a:(mk_option "vanilla" (function Vanilla _ -> true | _ -> false)) (H.pcdata "Vanilla and")
                     ; H.option ~a:(mk_option "allbut" (function All_but _ -> true | _ -> false)) (H.pcdata "All but")
                     ; H.option ~a:(mk_option "just" (function Just _ -> true | _ -> false)) (H.pcdata "Just")
                     ]
                 ; H.pcdata " "
-                ; H.input ~a:[ H.a_input_type `Text; H.a_name "packs"; H.a_value (String.concat " " packs)] () ]
+                ; H.input ~a:[ H.a_input_type `Text; H.a_name "packs"; H.a_id "packs"; H.a_value (String.concat " " packs)] () ]
          {|   </form>
             </div> |}
   ]
@@ -288,13 +288,14 @@ let print_summary (sum : ( (Sig.k * Data.alias)
     
 let query ngrok_mode data qs =
   let pspec =
+    let split_by_space = String.split & function ' ' -> true | _ -> false in
     match assoc_opt "packtype" qs, assoc_opt "packs" qs with
     | (Some ["vanilla"] | None), Some [s] ->
-        Query.PackageSpec.Vanilla (String.split (function ' ' -> true | _ -> false) s)
+        Query.PackageSpec.Vanilla (split_by_space s)
     | Some ["just"], Some [s] ->
-        Query.PackageSpec.Just (String.split (function ' ' -> true | _ -> false) s)
+        Query.PackageSpec.Just (split_by_space s)
     | Some ["allbut"], Some [s] ->
-        Query.PackageSpec.All_but (String.split (function ' ' -> true | _ -> false) s)
+        Query.PackageSpec.All_but (split_by_space s)
     | _ -> Query.PackageSpec.Vanilla []
   in
   let qstr, status, bs =
