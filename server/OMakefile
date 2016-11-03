@@ -15,9 +15,11 @@ OCAMLPACKS[]=
     opamfind
     unmagic
     ppx_tools.metaquot
+    lwt
+    cohttp
     cohttp.lwt
     tyxml
-    tyxml.ppx
+    tyxml.ppx # XXX this required opam install tyxml-ppx..
     netstring
 
 FILES[] =
@@ -52,6 +54,8 @@ FILES[] =
     ../search
     ../predeftypes
     ../predefscrape
+    ../attr
+    ../ocamldoc
     main
 
 

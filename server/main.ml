@@ -53,17 +53,17 @@ let query_form pspec (v : string) =
   [%html {| <div class="query">
               <span class="logo">OC&#x1f441;</span>
               <form action="/" method="get"> |}
-                [ H.pcdata "Query: "; H.input ~a:[ H.a_input_type `Text; H.a_name "q"; H.a_value v] ()
-                ; H.input ~a:[ H.a_input_type `Submit; H.a_style "visibility: hidden;"] () 
+                [ H.pcdata "Query: "; H.input ~a:[ H.a_input_type `Text; H.a_id "q"; H.a_name "q"; H.a_value v] ()
+                ; H.input ~a:[ H.a_input_type `Submit; H.a_id "submit" ] () 
                 ; H.br ()
                 ; H.pcdata " Packages: "
-                ; H.select ~a: [ H.a_name "packtype" ]
+                ; H.select ~a: [ H.a_name "packtype"; H.a_id "packtype" ]
                     [ H.option ~a:(mk_option "vanilla" (function Vanilla _ -> true | _ -> false)) (H.pcdata "Vanilla and")
                     ; H.option ~a:(mk_option "allbut" (function All_but _ -> true | _ -> false)) (H.pcdata "All but")
                     ; H.option ~a:(mk_option "just" (function Just _ -> true | _ -> false)) (H.pcdata "Just")
                     ]
                 ; H.pcdata " "
-                ; H.input ~a:[ H.a_input_type `Text; H.a_name "packs"; H.a_value (String.concat " " packs)] () ]
+                ; H.input ~a:[ H.a_input_type `Text; H.a_name "packs"; H.a_id "packs"; H.a_value (String.concat " " packs)] () ]
          {|   </form>
             </div> |}
   ]
@@ -89,156 +89,166 @@ let fsignature_item i =
   let ((k,p),res) = fsignature_item i in
   let hk = spans ~a:[H.a_class ["kind"]] (Sig.string_of_k k ^ " ") in
   let hp = hpath p in
-  H.div ~a: [ H.a_class [ "item" ] ] &
-  match res with
-  | FValue (ty, _) -> [ hk; hp; spans " : "; htype ty ]
-  (* | FValue (ty, SVal_prim) -> [ spans "external"; hp; spans " : "; htype ty ] *)
-  | FModule _ -> [ hk; hp; spans " : "; spans "sig ... end" ]
-  | FModtype None -> [ hk; hp ]
-  | FModtype (Some _) -> [ hk; hp; spans " = "; spans "sig ... end" ]
-  | FType (pars, tk, pf, aliaso, rs) -> (* Trec_not or other *)
-      hk
-      :: (match rs with Trec_not -> [ spans "norec" ] | _ -> [])
-      @ htyparams pars
-      @ [ hp ]
-      @ (match aliaso with None -> [] | Some ty -> [ spans " = "; htype ty ])
-      @ (match tk with
-         | FAbstract -> []
-         | FOpen -> [ spans " = "; spans ".." ]
-         | FRecord fsig ->
-             let field = function
-               | ((_, p), FRecordField (Immutable, ty)) ->
-                   H.span [ hpath p
-                          ; spans " : "
-                          ; htype ty
-                          ]
-               | ((_, p), FRecordField (Mutable, ty)) ->
-                   H.span [ spans "mutable "
-                          ; hpath p
-                          ; spans " : "
-                          ; htype ty
-                          ]
-               | _ -> assert false
-             in
-             spans " = "
-             :: (if pf = Private then [ spans "private" ] else [])
-             @ [ spans "{ "; H.div (map field fsig); spans " }" ]
-         | FVariant fsig ->
-             let constr = function
-               | ((_, p), FVariantConstructor (ty, None)) ->
-                   begin match ty with
-                   | Otyp_arrow (_, ty, _) ->
-                       H.span [ spans " | "; hpath p; spans " of "; htype ty ] 
-                   | _ ->
-                       H.span [ spans " | "; hpath p] 
-                   end
-               | ((_, p), FVariantConstructor (ty, Some _)) -> (* XXX I guess the return type is integrated into ty already *)
-                   H.span [ spans " | "; hpath p; spans " : "; htype ty ] 
-               | _ -> assert false
-             in
-             spans " = "
-             :: (if pf = Private then [ spans "private" ] else [])
-             @ [ H.div (map constr fsig); ]
-        )
-  | FRecordField (Immutable, ty) -> [ hk; hp; spans " : "; htype ty ]
-  | FRecordField (Mutable, ty) -> [ hk; spans "mutable"; hp; spans " : "; htype ty ]
+  let fsig = 
+    H.div ~a: [ H.a_class [ "fsig" ] ] &
+    match res with
+    | FValue (ty, _) -> [ hk; hp; spans " : "; htype ty ]
+    (* | FValue (ty, SVal_prim) -> [ spans "external"; hp; spans " : "; htype ty ] *)
+    | FModule _ -> [ hk; hp; spans " : "; spans "sig ... end" ]
+    | FModtype None -> [ hk; hp ]
+    | FModtype (Some _) -> [ hk; hp; spans " = "; spans "sig ... end" ]
+    | FType (pars, tk, pf, aliaso, rs) -> (* Trec_not or other *)
+        hk
+        :: (match rs with Trec_not -> [ spans "norec" ] | _ -> [])
+        @ htyparams pars
+        @ [ hp ]
+        @ (match aliaso with None -> [] | Some ty -> [ spans " = "; htype ty ])
+        @ (match tk with
+           | FAbstract -> []
+           | FOpen -> [ spans " = "; spans ".." ]
+           | FRecord fsig ->
+               let field = function
+                 | ((_, p), FRecordField (Immutable, ty)) ->
+                     H.span [ hpath p
+                            ; spans " : "
+                            ; htype ty
+                            ]
+                 | ((_, p), FRecordField (Mutable, ty)) ->
+                     H.span [ spans "mutable "
+                            ; hpath p
+                            ; spans " : "
+                            ; htype ty
+                            ]
+                 | _ -> assert false
+               in
+               spans " = "
+               :: (if pf = Private then [ spans "private" ] else [])
+               @ [ spans "{ "; H.div (map field fsig); spans " }" ]
+           | FVariant fsig ->
+               let constr = function
+                 | ((_, p), FVariantConstructor (ty, None)) ->
+                     begin match ty with
+                     | Otyp_arrow (_, ty, _) ->
+                         H.span [ spans " | "; hpath p; spans " of "; htype ty ] 
+                     | _ ->
+                         H.span [ spans " | "; hpath p] 
+                     end
+                 | ((_, p), FVariantConstructor (ty, Some _)) -> (* XXX I guess the return type is integrated into ty already *)
+                     H.span [ spans " | "; hpath p; spans " : "; htype ty ] 
+                 | _ -> assert false
+               in
+               spans " = "
+               :: (if pf = Private then [ spans "private" ] else [])
+               @ [ H.div (map constr fsig); ]
+          )
+    | FRecordField (Immutable, ty) -> [ hk; hp; spans " : "; htype ty ]
+    | FRecordField (Mutable, ty) -> [ hk; spans "mutable"; hp; spans " : "; htype ty ]
+    
+    | FVariantConstructor (ty, None) -> [ hk; hp; spans " : "; htype ty ] 
+    | FVariantConstructor (ty, Some _) -> [ hk; hp; spans " : "; htype ty ] (* XXX I guess the retun type is integrated into ty already *)
   
-  | FVariantConstructor (ty, None) -> [ hk; hp; spans " : "; htype ty ] 
-  | FVariantConstructor (ty, Some _) -> [ hk; hp; spans " : "; htype ty ] (* XXX I guess the retun type is integrated into ty already *)
-
-  | FTypext (ts, t', rto, pf) ->
-      let args, rt  = match t' with
-        | Otyp_arrow ("", ts, rt) ->
-            begin match ts with
-            | Otyp_tuple ts -> ts, rt
-            | Otyp_record _ -> [ts], rt
-            | _ -> assert false
-            end
-        | _ -> assert false
-      in
-      let oext_type_name = match rt with
-        | Otyp_constr (oi, _) -> hpath oi
-        | _ -> assert false
-      in
-      hk
-      :: htyparams ts
-      @ [ oext_type_name; spans "+=" ]
-      @ (if pf = Private then [ spans "private" ] else [])
-      @ [ hp ]
-      @ (match rto with
-         | None ->
-             begin match args with
-             | [] -> []
-             | _ -> [ spans " of "; htype (Otyp_tuple args) ]
-             end
-         | Some rty ->
-             begin match args with
-             | [] -> [ spans " : "; htype rty ]
-             | _ -> [ spans " : "; htype (Otyp_arrow ("", Otyp_tuple args, rty)) ]
-             end)
-  | FClass (tys, _fs, t, _p, (vf, _r)) -> 
-(*
-      let clt = 
-        let rec f = function
-          | Otyp_arrow (s, t1, t2) -> Octy_arrow (s, t1, f t2)
-          | Otyp_object (meths, _ (* CR jfuruse: todo None: closed, Some true: _.., Some false: .. *) ) ->
-              (* CR jfuruse: we should use fs instead of t? *)
-              Octy_signature (None (* CR jfuruse: self_ty*), 
-                              flip map meths & fun (s,t) ->
-                                Ocsg_method (s, true (*?*), true(*?*), t))
-          | Otyp_alias (t, a) ->
-              (* not sure... *)
-              begin match f t with
-              | Octy_signature (None, xs) ->
-                  Octy_signature (Some (Otyp_var (false, a)), xs)
+    | FTypext (ts, t', rto, pf) ->
+        let args, rt  = match t' with
+          | Otyp_arrow ("", ts, rt) ->
+              begin match ts with
+              | Otyp_tuple ts -> ts, rt
+              | Otyp_record _ -> [ts], rt
               | _ -> assert false
               end
-          | t -> 
-              !!% "?!?!: %s@." (string_of_type t);
-              assert false
+          | _ -> assert false
         in
-        f & M.simplif_type t
-      in
-*)
-      hk
-      :: (if vf = Virtual then [ spans "virtual" ] else [])
-      @ htyparams ~cls:true tys
-      @ [hp] (* XXX how abstract class is encoded?? *)
-      @ [ spans " : "; htype t ]
-
-  | FClassType (pars, _fs, t, _p, (vf, _r)) ->
-(*
-      let clt = 
-        let rec f = function
-          | Otyp_arrow (s, t1, t2) -> Octy_arrow (s, t1, f t2)
-          | Otyp_object (meths, _ (* CR jfuruse: todo None: closed, Some true: _.., Some false: .. *) ) ->
-              (* CR jfuruse: we should use fs instead of t? *)
-              Octy_signature (None (* CR jfuruse: self_ty*), 
-                              flip map meths & fun (s,t) ->
-                                Ocsg_method (s, true (*?*), true(*?*), t))
-          | Otyp_alias (t, a) ->
-              (* not sure... *)
-              begin match f t with
-              | Octy_signature (None, xs) ->
-                  Octy_signature (Some (Otyp_var (false, a)), xs)
-              | _ -> assert false
-              end
-          | t -> 
-              !!% "?!?!: %s@." (string_of_type t);
-              assert false
+        let oext_type_name = match rt with
+          | Otyp_constr (oi, _) -> hpath oi
+          | _ -> assert false
         in
-        f & M.simplif_type t
-      in
-*)
-      hk
-      :: (if vf = Virtual then [ spans "virtual" ] else [])
-      @ htyparams ~cls:true pars
-      @ [hp] (* XXX how abstract class is encoded?? *)
-      @ [ spans " = "; htype t ]
-
-  | FMethod ty -> [ hk; hp; spans " : "; htype ty ]
-  | FTypextRaw _
-  | FVariantConstructorRaw _ -> assert false
+        hk
+        :: htyparams ts
+        @ [ oext_type_name; spans "+=" ]
+        @ (if pf = Private then [ spans "private" ] else [])
+        @ [ hp ]
+        @ (match rto with
+           | None ->
+               begin match args with
+               | [] -> []
+               | _ -> [ spans " of "; htype (Otyp_tuple args) ]
+               end
+           | Some rty ->
+               begin match args with
+               | [] -> [ spans " : "; htype rty ]
+               | _ -> [ spans " : "; htype (Otyp_arrow ("", Otyp_tuple args, rty)) ]
+               end)
+    | FClass (tys, _fs, t, _p, (vf, _r)) -> 
+  (*
+        let clt = 
+          let rec f = function
+            | Otyp_arrow (s, t1, t2) -> Octy_arrow (s, t1, f t2)
+            | Otyp_object (meths, _ (* CR jfuruse: todo None: closed, Some true: _.., Some false: .. *) ) ->
+                (* CR jfuruse: we should use fs instead of t? *)
+                Octy_signature (None (* CR jfuruse: self_ty*), 
+                                flip map meths & fun (s,t) ->
+                                  Ocsg_method (s, true (*?*), true(*?*), t))
+            | Otyp_alias (t, a) ->
+                (* not sure... *)
+                begin match f t with
+                | Octy_signature (None, xs) ->
+                    Octy_signature (Some (Otyp_var (false, a)), xs)
+                | _ -> assert false
+                end
+            | t -> 
+                !!% "?!?!: %s@." (string_of_type t);
+                assert false
+          in
+          f & M.simplif_type t
+        in
+  *)
+        hk
+        :: (if vf = Virtual then [ spans "virtual" ] else [])
+        @ htyparams ~cls:true tys
+        @ [hp] (* XXX how abstract class is encoded?? *)
+        @ [ spans " : "; htype t ]
+  
+    | FClassType (pars, _fs, t, _p, (vf, _r)) ->
+  (*
+        let clt = 
+          let rec f = function
+            | Otyp_arrow (s, t1, t2) -> Octy_arrow (s, t1, f t2)
+            | Otyp_object (meths, _ (* CR jfuruse: todo None: closed, Some true: _.., Some false: .. *) ) ->
+                (* CR jfuruse: we should use fs instead of t? *)
+                Octy_signature (None (* CR jfuruse: self_ty*), 
+                                flip map meths & fun (s,t) ->
+                                  Ocsg_method (s, true (*?*), true(*?*), t))
+            | Otyp_alias (t, a) ->
+                (* not sure... *)
+                begin match f t with
+                | Octy_signature (None, xs) ->
+                    Octy_signature (Some (Otyp_var (false, a)), xs)
+                | _ -> assert false
+                end
+            | t -> 
+                !!% "?!?!: %s@." (string_of_type t);
+                assert false
+          in
+          f & M.simplif_type t
+        in
+  *)
+        hk
+        :: (if vf = Virtual then [ spans "virtual" ] else [])
+        @ htyparams ~cls:true pars
+        @ [hp] (* XXX how abstract class is encoded?? *)
+        @ [ spans " = "; htype t ]
+  
+    | FMethod ty -> [ hk; hp; spans " : "; htype ty ]
+    | FTypextRaw _
+    | FVariantConstructorRaw _ -> assert false
+  in
+  let doc =
+    match 
+      Option.bind i.Data.DB.v Hump.get_doc
+    with
+    | None -> []
+    | Some d ->  [ H.div ~a: [H.a_class [ "docstring" ]] [ H.pcdata d ] ]
+  in
+  H.div ~a: [ H.a_class [ "item" ] ] ( fsig :: doc )
     
 let print_summary (sum : ( (Sig.k * Data.alias)
                            * int
@@ -277,29 +287,29 @@ let print_summary (sum : ( (Sig.k * Data.alias)
   H.div ~a:[H.a_id "result"] & mapi group sum
     
 let query ngrok_mode data qs =
-  let open Html in
   let pspec =
+    let split_by_space = String.split & function ' ' -> true | _ -> false in
     match assoc_opt "packtype" qs, assoc_opt "packs" qs with
     | (Some ["vanilla"] | None), Some [s] ->
-        Query.PackageSpec.Vanilla (String.split (function ' ' -> true | _ -> false) s)
+        Query.PackageSpec.Vanilla (split_by_space s)
     | Some ["just"], Some [s] ->
-        Query.PackageSpec.Just (String.split (function ' ' -> true | _ -> false) s)
+        Query.PackageSpec.Just (split_by_space s)
     | Some ["allbut"], Some [s] ->
-        Query.PackageSpec.All_but (String.split (function ' ' -> true | _ -> false) s)
+        Query.PackageSpec.All_but (split_by_space s)
     | _ -> Query.PackageSpec.Vanilla []
   in
   let qstr, status, bs =
     match assoc_opt "q" qs with
-    | None -> "", `Code 200, []
+    | None -> "", `Code 200, [ H.pcdata "Empty query" ]
 
     | Some [qstr] ->
         begin match Query.parse qstr with
-        | [] -> qstr, `Bad_request, []
+        | [] -> qstr, `Bad_request, [ H.pcdata "Query parse failure" ]
         | qs -> 
             let res = Exn.catch_ & fun () -> Query.query data pspec qs in
             match res with  
             | `Ok [] ->
-                qstr, `OK, [ H.div [ H.pcdata "Empty result" ] ]
+                qstr, `OK, [ H.pcdata "Empty result" ]
             | `Ok res ->
                 qstr, `OK, [ print_summary (Summary.group res) ]
             | `Error (`Exn e) -> 
@@ -307,9 +317,9 @@ let query ngrok_mode data qs =
                   let trace = Exn.get_backtrace () in
                   !% "Uncaught exception: %s\nBacktrace:\n%s\n" (Exn.to_string e) trace
                 in
-                qstr, `Internal_server_error, [p [pcdata str]]
+                qstr, `Internal_server_error, [ H.pcdata str ]
         end
-    | Some _ -> "", `Bad_request, [p [pcdata "Illegal comma separated query"]]
+    | Some _ -> "", `Bad_request, [ H.pcdata "Illegal comma separated query" ]
   in
 
   if ngrok_mode then begin
@@ -317,8 +327,8 @@ let query ngrok_mode data qs =
     Server.respond_string ~headers ~status ~body:(html_elt_to_string (H.div bs)) ()
   end else
     respond ~status
-    & html oc_header
-    & body & query_form pspec qstr :: bs
+    & H.html oc_header
+    & H.body & query_form pspec qstr :: bs
 
 let if_modified_since h =
   let f s =

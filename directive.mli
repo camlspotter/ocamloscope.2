@@ -8,4 +8,13 @@ val interpret
   -> Parsetree.expression
   -> Query.PackageSpec.t
   -> Query.PackageSpec.t
-(** Execute an directive. Directive execution may modify the package spec *)
+(** Execute an directive. Directive execution may modify the package spec.
+
+    Supported directives are:
+
+    #packages : List the packages linked
+    #all      : Set the search targets to all the packages
+    #vanilla  : Set the search targets to the OCaml standard (-ocamldoc -compilerlibs)
+    #none     : Set the search targets to the empty set
+    #quit     : Quit the search session
+ *)

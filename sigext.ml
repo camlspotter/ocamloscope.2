@@ -19,10 +19,10 @@ open Sig
 type type_expr = Types.type_expr
 let ocaml_of_type_expr ty = Ocaml.String (Format.sprintf "%a" Printtyp.type_scheme ty)
     
-(* First step, scrape everything.
+(** First step, scrape everything.
 
    Idents and Paths are scraped as they are.
- *)
+*)
 module Scrape = struct
   type k = 
       | KValue     
@@ -82,8 +82,8 @@ module Scrape = struct
   and smodule =
     | SFunctor of Ident.t * smodule option * smodule
     | SSignature of ssignature
-    | SUNKNOWN_ident of Path.t (* scrape failed Mty_ident *)
-    | SUNKNOWN_alias of Path.t (* scrape failed Mty_alias *)
+    | SUNKNOWN_ident of Path.t (** scrape failed Mty_ident *)
+    | SUNKNOWN_alias of Path.t (** scrape failed Mty_alias *)
   
   [@@deriving conv{ocaml_of}]
 
@@ -442,12 +442,12 @@ module Scrape = struct
     signature sg
 end
   
+(** Second step: Flatten
+
+    Flatten the tree structure.  Types, idents and paths are kept as they are
+*)
 module Flatten = struct
 
-  (* Second step: Flatten
-
-     Flatten the tree structure.  Types, idents and paths are kept as they are
-  *)
   include Sig.Flatten(struct
     type type_expr = Types.type_expr
     let ocaml_of_type_expr = ocaml_of_type_expr
@@ -562,9 +562,9 @@ let papply c id = match c with
   | None -> assert false
   | Some p -> Path.Papply (p, Pident id)
 
-(* Scan Ident.t's and record their global access Path.t.
-   (Some Ident.t's are not reallay accessible by their global access Path.t
-   since they may be hidden by signatures)
+(** Scan Ident.t's and record their global access Path.t.
+    (Some Ident.t's are not reallay accessible by their global access Path.t
+    since they may be hidden by signatures)
 *)
 module Scan_ids = struct
   open Flatten
@@ -639,11 +639,11 @@ module Scan_ids = struct
       raise Not_found
 end
 
-(* Replace Path.t in the given flattened signature by
-   their global access paths.
+(** Replace Path.t in the given flattened signature by
+    their global access paths.
 
-   Path.t and Ident.t => out_ident
-   type_expr => out_type
+    Path.t and Ident.t => out_ident
+    type_expr => out_type
 *)
 module Globalized = struct
 
@@ -1045,9 +1045,6 @@ module Rewrite = struct
     | Papply(p1,p2) -> Papply(rewrite f p1, rewrite f p2)
 end
   
-let scrape_signature = Scrape.signature
-let flatten_signature = Flatten.ssignature
-let scan_ids = Scan_ids.scan
 let globalize tbl fsig =
   let rewrite = Rewrite.rewrite (Scan_ids.rewrite tbl) in
   let module G = Globalized.Make(struct let rewrite = rewrite end) in
@@ -1056,9 +1053,9 @@ let globalize tbl fsig =
 let scrape top sg =
   Reset.typing ();
   let env = Env.initial_unsafe_string in
-  let res = scrape_signature env sg in
-  let fsig, items = flatten_signature res in
-  let tbl = scan_ids top fsig in
+  let res = Scrape.signature env sg in
+  let fsig, items = Flatten.ssignature res in
+  let tbl = Scan_ids.scan top fsig in
 
   (* Adding the top module itself *)
   let self =
@@ -1093,14 +1090,14 @@ let test top sg =
   Reset.typing (); (* also need to call reset_cache_toplevel? *)
   let env = Env.initial_unsafe_string in
   !!% "scraping...@.";
-  let res = scrape_signature env sg in
+  let res = Scrape.signature env sg in
   !!% "%a@." Scrape.format res;
 
   !!% "@.Flattening...@.";
-  let fsig, items = flatten_signature res in
+  let fsig, items = Flatten.ssignature res in
   !!% "%a@.@." Flatten.format items;
 
-  let tbl = scan_ids top fsig in
+  let tbl = Scan_ids.scan top fsig in
   let items = globalize tbl items in
   !!% "%a@.@." Sig.format items;
   ()

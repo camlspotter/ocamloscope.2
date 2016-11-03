@@ -17,5 +17,5 @@ let sig_of_predefs =
   scan & Env.summary & Env.initial_unsafe_string
 
 let sig_ () = Sigext.scrape None sig_of_predefs
-let hump () = Humpext.Types.signature Env.initial_unsafe_string sig_of_predefs
-  
+let hump () = Humpext.types_signature Env.initial_unsafe_string sig_of_predefs
+

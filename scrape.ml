@@ -33,7 +33,7 @@ let rec normalize_path p = match p with
   | Oide_dot (p,n) -> Oide_dot (normalize_path p, n)
 
 let rec get_alias = function
-  | Hump.Def (p,_,_) -> false, Some (Data.Path p)
+  | Hump.Def { path=p } -> false, Some (Data.Path p)
   | Prim n           -> false, Some (Data.Primitive n)
   | Aliased (_, v)   -> let _,x = get_alias v in true,x
   | Coerced (v, _)   -> let b,x = get_alias v in b,x

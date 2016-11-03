@@ -25,11 +25,16 @@ let format_path ppf x = Ocaml.format_with ocaml_of_path ppf x
 (* The language is too general, but it is easier to consider for me... *)
 
 type v =
-  | Def of path * location * Digest.t option (* source digest *)
+  | Def of def
   | Aliased of v * v (*+ Aliased (v1, v2): thing defined originally at v2 is aliased at v1 *)
   | Coerced of v * v
   | LocNone
   | Prim of string (*+ ex. "%addint" *)
+and def = { path   : path
+          ; loc    : location
+          ; digest : Digest.t option (** source file digest *)
+          ; doc    : string option
+          }
 and id = k * string
 and expr =
   | EGVar of path (* persistent module *)
@@ -58,3 +63,12 @@ and expr =
 [@@deriving conv{ocaml_of}, typerep]
 
 let format ppf = Ocaml.format_with ocaml_of_expr ppf
+
+let rec get_doc = function
+  | Prim _ | LocNone -> None
+  | Def d -> d.doc
+  | Aliased (v,_) -> get_doc v
+  | Coerced (v1,v2) ->
+      match get_doc v2 with
+      | None -> get_doc v1
+      | Some d -> Some d

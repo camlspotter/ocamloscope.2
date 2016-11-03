@@ -2,20 +2,21 @@
 
 type k = KModule | KModtype | KType | KTypext | KValue | KClass | KClasstype | KConstructor | KField | KMethod
 [@@deriving conv{ocaml_of}, typerep]
-
+(** Kinds of the objects *)
+    
 val string_of_k : k -> string
 
 val parse_k : string -> k option
 
 type value_kind = SVal_prim | SVal_reg [@@deriving conv{ocaml_of}, typerep]
+(** Regular value or primitive *)
 
-type rec_status   = [%import: Types.rec_status]
-and  private_flag = [%import: Asttypes.private_flag]
-and  mutable_flag = [%import: Asttypes.mutable_flag]
-and  virtual_flag = [%import: Asttypes.virtual_flag]
-  [@@deriving conv{ocaml_of}, typerep]
-
-type out_ident     = [%import: Outcometree.out_ident]
+(* Add ocaml_of_xxx and typerep things to some data types *)    
+type rec_status    = [%import: Types.rec_status]
+and  private_flag  = [%import: Asttypes.private_flag]
+and  mutable_flag  = [%import: Asttypes.mutable_flag]
+and  virtual_flag  = [%import: Asttypes.virtual_flag]
+and  out_ident     = [%import: Outcometree.out_ident]
 and  out_type      = [%import: Outcometree.out_type]
 and  out_variant   = [%import: Outcometree.out_variant]
 and  out_attribute = [%import: Outcometree.out_attribute]

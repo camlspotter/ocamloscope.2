@@ -59,6 +59,8 @@ FILES[] =
     search
     predeftypes
     predefscrape
+    attr
+    ocamldoc
     main
 
 PROGRAM = oco
