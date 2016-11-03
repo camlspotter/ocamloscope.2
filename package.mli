@@ -3,8 +3,10 @@ open Utils
 open Opamfind
 
 val stdlib_dir : FilePath.t Lazy.t
-
+(** The path of stdlib directory *)
+  
 val sw : Opam.Switch.t Lazy.t
+(** The OPAM switch *)
   
 val packages : Ocamlfind.Package.t list Lazy.t
 (** OCamlFind packages found in the system *)

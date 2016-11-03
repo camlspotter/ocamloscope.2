@@ -62,7 +62,7 @@ open Re.Literal
 let normalize s =
   let ss =
     s |> {s|(^\s+|\s+$)//g|s} (* Remove start and end spaces *)
-      |> [%s "\r?\n\\s*/ /g" ] (* unindent *) (*XXX \r and \n are not accepted in {s|..|s}!! *)
+      |> [%s "\r?\n\\s*/ /g" ] (* unindent *) (* XXX Bug of ppx_orakuda: \r and \n are not accepted in {s|..|s}!! *)
       |> Re.split {m|\.\s+|m} (* split into sentences *)
   in
   let rec get len = function

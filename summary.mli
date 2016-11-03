@@ -9,6 +9,7 @@ val group
        * int
        * (int * Data.DB.item * 'trace1 * 'trace2) list list
      ) list
+(** Group the search results *)
 
 val group_and_print
   : Format.t

@@ -4,9 +4,9 @@ open Sig
 open Data
 
 type q = 
-  | Path      of out_ident
-  | Path_type of out_ident * out_type
-  | Type      of out_type
+  | Path      of out_ident            (** By path *)
+  | Path_type of out_ident * out_type (** By path and type *)
+  | Type      of out_type             (** By type *)
 [@@deriving conv{ocaml_of}]
 
 type t = k option * q
@@ -20,9 +20,9 @@ val parse : string -> t list
 
 module PackageSpec : sig  
   type t =
-    | Just of string list
-    | All_but of string list
-    | Vanilla of string list
+    | Just of string list    (** Only these packages *)
+    | All_but of string list (** All the packages linked except the specified *)
+    | Vanilla of string list (** [vanilla] plus the specified *)
   [@@deriving conv{ocaml_of}]
   
   val vanilla : string list
@@ -31,6 +31,7 @@ module PackageSpec : sig
   *)
 end
 
+(** BFG 9000 *)
 val query 
   : DB.t
   -> PackageSpec.t

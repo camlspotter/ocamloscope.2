@@ -2,7 +2,9 @@
 
 open Utils
 
-val do_search : FilePath.t -> unit (* never returns *)
+val do_search : FilePath.t -> unit
+(** Load the database file (normally "all.all") then start a search session *)
 
-val dump : Utils.FilePath.t -> unit
+val dump : FilePath.t -> unit
+(** Dump the database file. Normally useless since the output is too huge *)
 

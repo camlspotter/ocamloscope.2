@@ -1,3 +1,5 @@
+(** Tools for Docstrings, aka OCamlDoc comments *)
+
 val get_doc : Typedtree.attributes -> (string * Location.t) list
 (** Extract Docstrings from attributes *)
   
