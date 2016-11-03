@@ -52,7 +52,6 @@ FILES[] =
     ../humpscrape
     ../humpflat
     ../search
-    ../predeftypes
     ../predefscrape
     ../attr
     ../ocamldoc

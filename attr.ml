@@ -23,22 +23,22 @@ module Make(A : sig val f : attributes -> unit end) = struct
         typedtree.mli:536:     cd_attributes: attributes;
     *)
 
-    let enter_value_description vd = f vd.val_attributes
-    let enter_type_extension tyext = f tyext.tyext_attributes
-    let enter_extension_constructor ext = f ext.ext_attributes
-    let enter_pattern pat = f pat.pat_attributes
-    let enter_expression exp = f exp.exp_attributes
+    let enter_value_description vd        = f vd.val_attributes
+    let enter_type_extension tyext        = f tyext.tyext_attributes
+    let enter_extension_constructor ext   = f ext.ext_attributes
+    let enter_pattern pat                 = f pat.pat_attributes
+    let enter_expression exp              = f exp.exp_attributes
     let enter_module_type_declaration mtd = f mtd.mtd_attributes
-    let enter_module_type mty = f mty.mty_attributes
-    let enter_module_expr mod_ = f mod_.mod_attributes
-    let enter_class_expr cl = f cl.cl_attributes
-    let enter_class_declaration ci = f ci.ci_attributes
-    let enter_class_description ci = f ci.ci_attributes
-    let enter_class_type_declaration ci = f ci.ci_attributes
-    let enter_class_type cltyp = f cltyp.cltyp_attributes
-    let enter_class_type_field ctf = f ctf.ctf_attributes
-    let enter_core_type ctyp = f ctyp.ctyp_attributes
-    let enter_class_field cf = f cf.cf_attributes
+    let enter_module_type mty             = f mty.mty_attributes
+    let enter_module_expr mod_            = f mod_.mod_attributes
+    let enter_class_expr cl               = f cl.cl_attributes
+    let enter_class_declaration ci        = f ci.ci_attributes
+    let enter_class_description ci        = f ci.ci_attributes
+    let enter_class_type_declaration ci   = f ci.ci_attributes
+    let enter_class_type cltyp            = f cltyp.cltyp_attributes
+    let enter_class_type_field ctf        = f ctf.ctf_attributes
+    let enter_core_type ctyp              = f ctyp.ctyp_attributes
+    let enter_class_field cf              = f cf.cf_attributes
 
     let enter_binding vb = f vb.vb_attributes
 
