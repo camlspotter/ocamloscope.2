@@ -55,7 +55,9 @@ FILES[] =
     ../predefscrape
     ../attr
     ../ocamldoc
-    main
+    renderh
+    servertool
+    svmain
 
 
 if $(not $(equal $(OSTYPE), Win32))

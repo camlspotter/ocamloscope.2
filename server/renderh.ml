@@ -1,14 +1,7 @@
 open Spotlib.Spot
 open List
-open Cohttp_lwt_unix
-
 open Tyxml
 module H = Html
-
-(*
-let to_ocaml = Html.(a ~a:[a_href "ocaml.org"] [pcdata "OCaml!"])
-let%html to_ocaml = "<a href='ocaml.org'>OCaml!</a>"
-*)
 
 let html_to_string html =
   let b = Buffer.create 1000 in
@@ -33,40 +26,41 @@ let%html oc_header = {|
   </head>
 |}
     
-let respond ~status html =
-  let headers = Cohttp.Header.of_list ["Content-type", "text/html"; "Access-Control-Allow-Origin", "*"] in
-  Server.respond_string ~headers ~status ~body:(html_to_string html) ()
-
 let spans ?a s = H.span ?a [ H.pcdata s ]
 
 let query_form pspec (v : string) =
   let open Query.PackageSpec in
   let packs = match pspec with
     | All_but xs -> xs
-    | Just xs -> xs
+    | Just    xs -> xs
     | Vanilla xs -> xs
   in
   let mk_option v p =
-    if p pspec then [H.a_value v; H.a_selected ()]
-    else [H.a_value v]
+    H.a_value v
+    :: if p pspec then [ H.a_selected () ] else []
   in
-  [%html {| <div class="query">
-              <span class="logo">OC&#x1f441;</span>
-              <form action="/" method="get"> |}
-                [ H.pcdata "Query: "; H.input ~a:[ H.a_input_type `Text; H.a_id "q"; H.a_name "q"; H.a_value v] ()
-                ; H.input ~a:[ H.a_input_type `Submit; H.a_id "submit" ] () 
-                ; H.br ()
-                ; H.pcdata " Packages: "
-                ; H.select ~a: [ H.a_name "packtype"; H.a_id "packtype" ]
-                    [ H.option ~a:(mk_option "vanilla" (function Vanilla _ -> true | _ -> false)) (H.pcdata "Vanilla and")
-                    ; H.option ~a:(mk_option "allbut" (function All_but _ -> true | _ -> false)) (H.pcdata "All but")
-                    ; H.option ~a:(mk_option "just" (function Just _ -> true | _ -> false)) (H.pcdata "Just")
-                    ]
-                ; H.pcdata " "
-                ; H.input ~a:[ H.a_input_type `Text; H.a_name "packs"; H.a_id "packs"; H.a_value (String.concat " " packs)] () ]
-         {|   </form>
-            </div> |}
-  ]
+  [%html {| 
+     <div class="query">
+       <span class="logo">OC&#x1f441;</span>
+       <form action="/" method="get"> |}
+         [ H.pcdata "Query: "; H.input ~a:[ H.a_input_type `Text; H.a_id "q"; H.a_name "q"; H.a_value v] ()
+         ; H.input ~a:[ H.a_input_type `Submit; H.a_id "submit" ] () 
+         ; H.br ()
+         ; H.pcdata " Packages: "
+         ; H.select ~a: [ H.a_name "packtype"; H.a_id "packtype" ]
+           [ H.option ~a:(mk_option "vanilla" (function Vanilla _ -> true | _ -> false)) (H.pcdata "Vanilla and")
+           ; H.option ~a:(mk_option "allbut" (function All_but _ -> true | _ -> false)) (H.pcdata "All but")
+           ; H.option ~a:(mk_option "just" (function Just _ -> true | _ -> false)) (H.pcdata "Just")
+           ]
+         ; H.pcdata " "
+         ; H.input ~a:[ H.a_input_type `Text; H.a_name "packs"; H.a_id "packs"; H.a_value (String.concat " " packs)] () ]
+     {|</form>
+     </div>
+  |} ]
+
+let path_last = function
+  | Outcometree.Oide_dot (_, s) -> Outcometree.Oide_ident s
+  | x -> x
 
 let hpath p = spans ~a:[H.a_class ["path"]] & Format.sprintf "%a" Xoprint.print_ident p
 
@@ -107,39 +101,45 @@ let fsignature_item i =
            | FAbstract -> []
            | FOpen -> [ spans " = "; spans ".." ]
            | FRecord fsig ->
+               let unarrow = function
+                 | Otyp_arrow (_, _, ty) -> ty
+                 | ty -> Otyp_tuple [ Otyp_stuff "unarrow failed"; ty ]
+               in
                let field = function
                  | ((_, p), FRecordField (Immutable, ty)) ->
-                     H.span [ hpath p
+                     H.span [ hpath & path_last p
                             ; spans " : "
-                            ; htype ty
+                            ; htype & unarrow ty
                             ]
                  | ((_, p), FRecordField (Mutable, ty)) ->
                      H.span [ spans "mutable "
-                            ; hpath p
+                            ; hpath & path_last p
                             ; spans " : "
-                            ; htype ty
+                            ; htype & unarrow ty
                             ]
                  | _ -> assert false
                in
                spans " = "
                :: (if pf = Private then [ spans "private" ] else [])
-               @ [ spans "{ "; H.div (map field fsig); spans " }" ]
+               @ [ spans "{";
+                   H.div (tl & concat_map (fun s -> [ H.br (); H.space (); H.space (); field s; spans ";" ]) fsig);
+                   spans "}" ]
            | FVariant fsig ->
                let constr = function
                  | ((_, p), FVariantConstructor (ty, None)) ->
                      begin match ty with
                      | Otyp_arrow (_, ty, _) ->
-                         H.span [ spans " | "; hpath p; spans " of "; htype ty ] 
+                         H.span [ H.space (); H.space (); spans "| "; hpath & path_last p; spans " of "; htype ty ] 
                      | _ ->
-                         H.span [ spans " | "; hpath p] 
+                         H.span [ H.space (); H.space (); spans " | "; hpath & path_last p] 
                      end
                  | ((_, p), FVariantConstructor (ty, Some _)) -> (* XXX I guess the return type is integrated into ty already *)
-                     H.span [ spans " | "; hpath p; spans " : "; htype ty ] 
+                     H.span [ H.space (); H.space (); spans "| "; hpath & path_last p; spans " : "; htype ty ] 
                  | _ -> assert false
                in
                spans " = "
                :: (if pf = Private then [ spans "private" ] else [])
-               @ [ H.div (map constr fsig); ]
+               @ [ H.div (intersperse (H.br ()) & map constr fsig); ]
           )
     | FRecordField (Immutable, ty) -> [ hk; hp; spans " : "; htype ty ]
     | FRecordField (Mutable, ty) -> [ hk; spans "mutable"; hp; spans " : "; htype ty ]
@@ -285,142 +285,3 @@ let print_summary (sum : ( (Sig.k * Data.alias)
         @ [ H.br () ]
   in
   H.div ~a:[H.a_id "result"] & mapi group sum
-    
-let query ngrok_mode data qs =
-  let pspec =
-    let split_by_space = String.split & function ' ' -> true | _ -> false in
-    match assoc_opt "packtype" qs, assoc_opt "packs" qs with
-    | (Some ["vanilla"] | None), Some [s] ->
-        Query.PackageSpec.Vanilla (split_by_space s)
-    | Some ["just"], Some [s] ->
-        Query.PackageSpec.Just (split_by_space s)
-    | Some ["allbut"], Some [s] ->
-        Query.PackageSpec.All_but (split_by_space s)
-    | _ -> Query.PackageSpec.Vanilla []
-  in
-  let qstr, status, bs =
-    match assoc_opt "q" qs with
-    | None -> "", `Code 200, [ H.pcdata "Empty query" ]
-
-    | Some [qstr] ->
-        begin match Query.parse qstr with
-        | [] -> qstr, `Bad_request, [ H.pcdata "Query parse failure" ]
-        | qs -> 
-            let res = Exn.catch_ & fun () -> Query.query data pspec qs in
-            match res with  
-            | `Ok [] ->
-                qstr, `OK, [ H.pcdata "Empty result" ]
-            | `Ok res ->
-                qstr, `OK, [ print_summary (Summary.group res) ]
-            | `Error (`Exn e) -> 
-                let str =
-                  let trace = Exn.get_backtrace () in
-                  !% "Uncaught exception: %s\nBacktrace:\n%s\n" (Exn.to_string e) trace
-                in
-                qstr, `Internal_server_error, [ H.pcdata str ]
-        end
-    | Some _ -> "", `Bad_request, [ H.pcdata "Illegal comma separated query" ]
-  in
-
-  if ngrok_mode then begin
-    let headers = Cohttp.Header.of_list ["Content-type", "text/html"; "Access-Control-Allow-Origin", "*"] in
-    Server.respond_string ~headers ~status ~body:(html_elt_to_string (H.div bs)) ()
-  end else
-    respond ~status
-    & H.html oc_header
-    & H.body & query_form pspec qstr :: bs
-
-let if_modified_since h =
-  let f s =
-    (* prerr_endline ("< " ^ s); *)
-    match Netdate.since_epoch & Netdate.parse s with
-    | n ->
-        (* !!% "< epoch %f@." n; *)
-        `Ok n
-    | exception _e -> `Error (`Date_parse_failed s)
-  in
-  Option.fmap f & Cohttp.Header.get h "If-Modified-Since"
-
-(** memory stored file, but checks mtime to reload if the source is modified *)
-let file_in_memory p =
-  let open Unix in
-  let mtime = ref 0.0 in
-  let s = ref "" in
-  let update () =
-    let st = stat p in
-    if !mtime = st.st_mtime then !s, !mtime
-    else begin
-      mtime := st.st_mtime; 
-      s := from_Ok & File.to_string p;
-      !s, !mtime
-    end
-  in
-  ignore & update ();
-  update
-
-let respond_file_in_memory p ctype h =
-  let file = file_in_memory p in
-  let f = function
-    | None ->
-        (* prerr_endline "304"; *)
-        Server.respond_string
-          ~status: `Not_modified
-          ~headers: (Cohttp.Header.of_list [])
-          ~body: ""
-          ()
-    | Some (s, n) ->
-        (* prerr_endline "200"; *)
-        Server.respond_string
-          ~status: `OK
-          ~headers:(Cohttp.Header.of_list
-                      [ "Content-Type",   ctype
-                      ; "Content-Length", string_of_int & String.length s
-                      ; "Last-Modified",  Netdate.mk_mail_date n
-                      ])
-          ~body: s
-          ()
-  in
-  f & match if_modified_since h with
-  | None -> Some (file ())
-  | Some (`Error (`Date_parse_failed s)) ->
-      !!% "If-Modified-Since: date parse failed: %s@." s;
-      Some (file ())
-  | Some (`Ok ims) ->
-      let s, mt = file () in
-      if mt <= ims then None
-      else Some (s, mt)
-
-let style_css = respond_file_in_memory "style.css" "text/css"
-let ngrok_js = respond_file_in_memory "../ngrok/ngrok.js" "application/javascript"
-let ngroklocal_html = respond_file_in_memory "../ngrok/ngroklocal.html" "text/html"
-
-let server ngrok_mode port data =
-  let callback _conn req _body =
-    let uri = Request.uri req in
-    match Uri.path uri with
-    | "/style.css"  -> style_css req.Request.headers 
-    | "/ngrok.js" when ngrok_mode -> ngrok_js req.Request.headers
-    | "/ngroklocal.html" when ngrok_mode -> ngroklocal_html req.Request.headers
-    | "/" -> query ngrok_mode data & Uri.query uri
-    | _ ->
-        respond ~status:(`Code 404)
-        & H.html oc_header  
-        & H.body [ H.span [ H.pcdata "404" ]]
-  in
-  Server.create ~mode:(`TCP (`Port port)) (Server.make ~callback ())
-
-let () = 
-  let port = ref 80 in
-  let data_dir = ref "../out" in
-  let ngrok_mode = ref false in
-  Arg.parse 
-    [ "--port", Arg.Int (fun x -> port := x), "port (default is 80)"
-    ; "--data-dir", Arg.String (fun s -> data_dir := s), "data dir (default \"../out\")" 
-    ; "--ngrok", Arg.Set ngrok_mode, "undocumented"
-    ]
-    (fun _ -> failwith "does not take any anonymous arguments")
-    "server --port x --data_dir d";
-  let data = Data.DB.unsafe_load (!data_dir ^/ "all.all") in
-  ignore (Lwt_main.run (server !ngrok_mode !port data))
-
-
