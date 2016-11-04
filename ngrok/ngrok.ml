@@ -38,8 +38,25 @@ let form () =
     
   form##.onsubmit := (Dom.handler (fun _ ->
     catch_and_alert_ (fun () -> ignore & query ());
-    Js._false))
+    Js._false));
     
+  let query_in_url () =
+    let open Url in
+    match url_of_string & Js.to_string Dom_html.window##.location##.href with
+    | Some (Http {hu_arguments=xs} | Https {hu_arguments=xs} | File {fu_arguments=xs}) ->
+        let assoc_and_fill k input =
+          match List.assoc k xs with
+          | exception Not_found -> ()
+          | s -> input##.value := js s
+        in
+        assoc_and_fill "q" q;
+        assoc_and_fill "packtype" packtype;
+        assoc_and_fill "packs" packs;
+        ignore & query ()
+    | _ -> ()
+  in
+  query_in_url ()
+
 let start _ =
   catch_and_alert_ form;
   Js._false

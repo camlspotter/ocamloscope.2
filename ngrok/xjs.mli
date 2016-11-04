@@ -21,6 +21,9 @@ val remove_children : #Dom.node t -> unit
 val alert : string -> unit
 (** Alert dialog *)
   
+val alert_js : js_string t -> unit
+(** Alert dialog *)
+  
 val catch_and_alert_ : (unit -> unit) -> unit
 (** Execute the function and show an alert dialog if an exception is caught *)
 

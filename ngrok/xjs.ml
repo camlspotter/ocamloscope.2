@@ -14,6 +14,7 @@ let remove_children x =
 module Html = Dom_html
 
 let alert s = Html.window##alert (js s)
+let alert_js s = Html.window##alert s
 
 let catch_and_alert_ f =
   try f () with e -> alert (Printexc.to_string e)
