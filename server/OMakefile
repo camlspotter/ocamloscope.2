@@ -1,7 +1,4 @@
-OCAMLINCLUDES= ..
-
-OCAMLDEPFLAGS=
-OCAMLPPFLAGS= 
+OCAMLINCLUDES= . ..  # . is required otherwise render is gone!
 
 OCAMLPACKS[]=
     spotlib
@@ -55,7 +52,7 @@ FILES[] =
     ../predefscrape
     ../attr
     ../ocamldoc
-    renderh
+    render
     servertool
     svmain
 
@@ -66,3 +63,5 @@ if $(not $(equal $(OSTYPE), Win32))
     MyOCamlProgram($(PROGRAM), $(FILES))
 
     WithMerlin()
+
+    export

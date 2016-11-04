@@ -12,7 +12,7 @@ let respond ~status html =
       ; "Access-Control-Allow-Origin", "*" (* required for ngrok workaround *)
       ]
   in
-  Server.respond_string ~headers ~status ~body:(Renderh.html_to_string html) ()
+  Server.respond_string ~headers ~status ~body:(Render.html_to_string html) ()
 
 let query ngrok_mode data qs =
   let pspec =
@@ -40,7 +40,7 @@ let query ngrok_mode data qs =
             | `Ok [] ->
                 qstr, `OK, [ H.pcdata "Empty result" ]
             | `Ok res ->
-                qstr, `OK, [ Renderh.print_summary (Summary.group res) ]
+                qstr, `OK, [ Render.print_summary (Summary.group res) ]
             | `Error (`Exn e) -> 
                 let str =
                   let trace = Exn.get_backtrace () in
@@ -53,11 +53,11 @@ let query ngrok_mode data qs =
 
   if ngrok_mode then begin
     let headers = Cohttp.Header.of_list ["Content-type", "text/html"; "Access-Control-Allow-Origin", "*"] in
-    Server.respond_string ~headers ~status ~body:(Renderh.html_elt_to_string (H.div bs)) ()
+    Server.respond_string ~headers ~status ~body:(Render.html_elt_to_string (H.div bs)) ()
   end else
     respond ~status
-    & H.html Renderh.oc_header
-    & H.body & Renderh.query_form pspec qstr :: bs
+    & H.html Render.oc_header
+    & H.body & Render.query_form pspec qstr :: bs
 
 let style_css       = Servertool.respond_file_in_memory "style.css" "text/css"
 let ngrok_js        = Servertool.respond_file_in_memory "../ngrok/ngrok.js" "application/javascript"
@@ -73,7 +73,7 @@ let server ngrok_mode port data =
     | "/" -> query ngrok_mode data & Uri.query uri
     | _ ->
         respond ~status:(`Code 404)
-        & H.html Renderh.oc_header  
+        & H.html Render.oc_header  
         & H.body [ H.span [ H.pcdata "404" ]]
   in
   Server.create ~mode:(`TCP (`Port port)) (Server.make ~callback ())
