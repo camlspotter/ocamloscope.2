@@ -64,7 +64,7 @@ let path_last = function
 
 let hpath p = spans ~a:[H.a_class ["path"]] & Format.sprintf "%a" Xoprint.print_ident p
 
-let fsignature_item i =
+let fsignature_item (i : Data.DB.item) =
   let open Data.DB in
   let open Sig in
   let open Outcometree in
@@ -249,6 +249,7 @@ let fsignature_item i =
     | Some d ->  [ H.div ~a: [H.a_class [ "docstring" ]] [ H.pcdata d ] ]
   in
   H.div ~a: [ H.a_class [ "item" ] ] ( fsig :: doc )
+  (* @ [ H.pre [H.pcdata & Format.sprintf "@[%a@]" Hump.print_v (match i.v with Some v -> v | None -> Hump.LocNone) ]] *)
     
 let print_summary (sum : ( (Sig.k * Data.alias)
                            * int
