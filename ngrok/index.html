@@ -3,27 +3,65 @@
           "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta charset="UTF-8">
     <title>OCamlOScope.2 server</title>
+    <meta charset="UTF-8">
     <link rel="stylesheet" href="style.css">
     <script type="text/javascript" src="ngrok.js"></script>
   </head>
   <body>
     <div class="query">
       <span class="logo">OC👁</span>
-      <form id="form" action="">
-	Query: <input type="text" name="q" value=""/>
-	<input type="submit"/>
+      <form id="form">
+	Query: <input id="q" type="text" name="q" value=""/>
+	<input id="submit" type="submit"/>
 	<br/>
 	Packages:
-	<select name="packtype">
+	<select id="packtype" name="packtype">
 	  <option value="vanilla" selected="selected">Vanilla and</option>
 	  <option value="allbut">All but</option>
 	  <option value="just">Just</option>
 	</select>
-	<input type="text" name="packs" value=""/>
+	<input id="packs" type="text" name="packs" value=""/>
       </form>
     </div>
-    <div id="insert"/>
+    <div id="wait" style="display: none;"><img src="camel_rotate.gif"/></div>
+    <div id="insert">
+      <h1>OCamlOScope 2</h1>
+      <h2>How to use</h2>
+      <ul>
+	<li> Query by name, type and both of them
+	  <ul>
+	    <li> <tt>int -> int -> int</tt> </li>
+	    <li> <tt>map</tt> </li>
+	    <li> <tt>add : t -> elt -> t </tt> </li>
+	  </ul>
+	</li>
+	<li> Packages to restrict search space
+	  <ul>
+	    <li> "Vanilla and":
+	      Basic packages (stdlib, bigarray, dynlinks, graphics, num, str, threads, unix) and the packages you specify
+	    </li>
+	    <li> "All but":
+	      All the packages in the data base minus the packages you specify
+	    </li>
+	    <li> "Just":
+	      Only the packages you specify
+	    </li>
+	  </ul>
+	</li>
+      </ul>
+      <h2>Code</h2>
+      Code can be found at: <a href="https://github.com/camlspotter/ocamloscope.2">https://github.com/camlspotter/ocamloscope.2</a>.
+      <h2>What's new in 2</h2>
+      <ul>
+	<li>Complete rewrite</li>
+	<li>Aliases introduced by module alias, include and functor applications are analyzed</li>
+	<li>Use of <tt>Outcometree</tt> for data representation for easier port for future OCaml releases</li>
+	<li>Easier to scrape and contribute: anyone can scrape packages and share the data file</li>
+	<li>Switch to Cohttp from Eliom which was too heavy weight for the web interface.
+      </ul>
+      <h2>What's to be done</h2>
+      See <a href="https://github.com/camlspotter/ocamloscope.2/issues">issues</a>.
+    </div>
   </body>
 </html>
