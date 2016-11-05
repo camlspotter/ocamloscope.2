@@ -34,6 +34,8 @@ FILES[]=
   t29_virtual
   t30_typedtreeMap
   t31_method
+  t32_docstring
+  t34_let_var_equal_path
 
 NO_INSTALL=true
 PROGRAM=dummy
