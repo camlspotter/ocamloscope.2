@@ -26,7 +26,7 @@ let format_path ppf x = Ocaml.format_with ocaml_of_path ppf x
 
 type v =
   | Def of def
-  | Aliased of v * v (*+ Aliased (v1, v2): thing defined originally at v2 is aliased at v1 *)
+  | Aliased of v * v (* Aliased (v1, v2): thing defined originally at v2 is aliased at v1 *)
   | Coerced of v * v
   | LocNone
   | Prim of string (*+ ex. "%addint" *)
@@ -67,8 +67,25 @@ let format ppf = Ocaml.format_with ocaml_of_expr ppf
 let rec get_doc = function
   | Prim _ | LocNone -> None
   | Def d -> d.doc
-  | Aliased (v,_) -> get_doc v
+  | Aliased (v1,v2) ->
+      begin match get_doc v1 with
+      | None -> get_doc v2
+      | Some d -> Some d
+      end
   | Coerced (v1,v2) ->
       match get_doc v2 with
       | None -> get_doc v1
       | Some d -> Some d
+
+let rec print_v ppf =
+  let open Format in
+  function
+    | Def d -> fprintf ppf "%a at %a"
+        (Ocaml.format_with ocaml_of_path) d.path (* XXX make the printer as a library function *)
+        Location.print_compact d.loc
+    | Aliased (v1, v2) ->
+        fprintf ppf "@[<v2>Aliased at@ %a@ org-defined at %a@]" print_v v1 print_v v2
+    | Coerced (v1, v2) ->
+        fprintf ppf "@[<v2>Coerced @ %a @ by %a@]" print_v v1 print_v v2
+    | LocNone -> string ppf "LocNone"
+    | Prim s -> fprintf ppf "Primitive %s" s
