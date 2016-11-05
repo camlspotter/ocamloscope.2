@@ -18,4 +18,13 @@ opam/generated
 out/.*.(sig|hump|dat)
 oco.exe
 tests/dummy.exe
-
+server/server
+server/server.exe
+tests/dummy
+tests/dummy.exe
+out
+oco
+oco.exe
+camlspotter.github.io
+ngrok/ngrok
+ngrok/ngrok.js

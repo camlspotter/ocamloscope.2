@@ -50,7 +50,7 @@ end) = struct
   (* reduce the memory size in earlier stages *)
   let expr = Hashcons.hump_expr
   
-  (* val path : Sig.k -> Utils.Path.t -> Hump.expr *)
+  (* val path : Sig.k -> Path.t -> Hump.expr *)
   let path =
     let cache = Hashtbl.create 107 in
     let rec path k p = flip2 Hashtbl.find_or_add cache (k,p) & fun (k,p) -> 
@@ -964,7 +964,15 @@ end) = struct
       }
   *)
   
-    and value_binding c vb = pattern c vb.vb_pat
+    and value_binding c vb =
+      (* [let x = P.y] introduces an alias *)
+      match vb.vb_pat.pat_desc, vb.vb_expr.exp_desc with
+      | Tpat_var (id, {loc}), Texp_ident (p, _, _) ->
+          let doc = Doc.get vb.vb_pat.pat_attributes in
+          [(Sig.KValue, iname id),
+           EAddAlias (def (o_dot c id) loc doc,
+                      path Sig.KValue p)]
+      | _ -> pattern c vb.vb_pat
   
   (*
   and value_binding =
