@@ -11,12 +11,13 @@ let rec search db pspec =
         !!% "Directive syntax error: %s@." (Exn.to_string exn);
         pspec
     | None ->
-        let qs = Query.parse s in
+        let qs,warns = Query.parse s in
         !!% "Query: %a@." (Ocaml.format_with [%derive.ocaml_of: Query.t list]) qs;
         begin match qs with
         | [] ->
             !!% "Query parse failure"
         | _ -> 
+            iter (!!% "Warning: %s@.") warns; 
             let res = Query.query db pspec qs in
           (*
             let res = flip concat_map res (fun (d,xs) -> flip map xs (fun (ent,pt,tt) -> (d,ent,pt,tt))) in

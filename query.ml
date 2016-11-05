@@ -38,6 +38,19 @@ let parse_as_path_type s =
   with
   | _ -> None
 
+(* _ : type *)
+let parse_as_wildcard_colon_type s =
+  try
+    let s = "( x" ^ s ^ ")" in
+    let lexbuf = Lexing.from_string s in
+    let e = Parse.expression lexbuf in
+    match e.pexp_desc with
+    | Pexp_constraint ({pexp_desc= Pexp_ident {txt=Lident "x_"}}, ty) ->
+        Some (Type(Coretype.out_of_core_type ty))
+    | _ -> None
+  with
+  | _ -> None
+
 let parse_path s =
   let f s = 
     try
@@ -67,15 +80,43 @@ let parse_kind_prefix s = case s
   |> default (fun () -> None)
 
 let parse s =
-  let parse_without_prefix s =
-    filter_map id [ parse_as_path_type s; parse_as_type s; parse_path s ]
-  in
   let prefixed = match parse_kind_prefix s with
     | None -> []
-    | Some (k, s) -> map (fun x -> Some k, x) & parse_without_prefix s
+    | Some (k, s) ->
+        let parse_with_prefix s =
+          filter_map id [ parse_as_path_type s; parse_path s; parse_as_wildcard_colon_type s ]
+        in
+        map (fun x -> Some k, x) & parse_with_prefix s
   in
-  let non_prefixed = map (fun x -> None, x) & parse_without_prefix s in
-  prefixed @ non_prefixed
+  let non_prefixed =
+    let parse_without_prefix s =
+      filter_map id [ parse_as_path_type s; parse_as_type s; parse_path s; parse_as_wildcard_colon_type s ]
+    in
+    map (fun x -> None, x) & parse_without_prefix s
+  in
+  let qs = prefixed @ non_prefixed in
+  let qs, warning =
+    (* There are two ways to parse  map : ('a -> 'b) -> 'a list -> 'b list :
+
+       * something named map of type ('a -> 'b) -> 'a list -> 'b list
+       * something of type map:('a -> 'b) -> 'a list -> 'b list
+
+       We discard the latter possibility and propose the user to write
+       "_ : map:('a -> 'b) -> 'a list -> 'b list" if he/she really wants it.
+    *)
+    let ty = filter (function (None, Type _) -> true | _ -> false) qs in
+    let path_ty = filter (function (None, Path_type _) -> true | _ -> false) qs in
+    let path = filter (function (None, Path _) -> true | _ -> false) qs in
+    let with_kind = filter (function (Some _, _) -> true | _ -> false) qs in
+    assert (length qs = length (ty @ path_ty @ path @ with_kind));
+    match ty, path_ty with
+    | _::_, _::_ ->
+        path_ty @ path @ with_kind,
+        ["Use \"_ : " ^ s ^ "\", if you want to search a function with a labeled argument"]
+    | _ -> ty @ path_ty @ path @ with_kind, []
+        
+  in
+  qs, warning
 
 module PackageSpec = struct    
   type t =
