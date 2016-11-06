@@ -36,6 +36,7 @@ FILES[]=
   t31_method
   t32_docstring
   t33_noname
+  t34_let_var_equal_path
 
 NO_INSTALL=true
 PROGRAM=dummy
