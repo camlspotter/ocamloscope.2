@@ -33,11 +33,11 @@ let rec normalize_path p = match p with
   | Oide_dot (p,n) -> Oide_dot (normalize_path p, n)
 
 let rec get_alias = function
-  | Hump.Def { path=p } -> false, Some (Data.Path p)
-  | Prim n           -> false, Some (Data.Primitive n)
-  | Aliased (_, v)   -> let _,x = get_alias v in true,x
-  | Coerced (v, _)   -> let b,x = get_alias v in b,x
-  | LocNone          -> false, None
+  | Hump.Def { path=p } -> Some (Data.Path p)
+  | Prim n           -> Some (Data.Primitive n)
+  | Aliased (_, v)   -> get_alias v
+  | Coerced (v, _)   -> get_alias v
+  | LocNone          -> None
 
 let combine_sig_hump sigs (humps : Humpflat.ent list) =
   let humps = map remove_alpha_postfix humps in
@@ -46,12 +46,10 @@ let combine_sig_hump sigs (humps : Humpflat.ent list) =
   flip map sigs & fun ((k,p),v) ->
     let p' = normalize_path p in
     let vo = Hashtbl.find_opt humps (k,p') in
-    let alias = match vo with
-      | None -> None
-      | Some v ->
-          match get_alias v with
-          | true, Some x -> Some x
-          | _ -> None
+    let alias =
+      Option.bind vo & fun v -> 
+        let a = get_alias v in
+        if a <> Some (Data.Path p) then a else None
     in
     (k,p),(v,alias,vo)
 
