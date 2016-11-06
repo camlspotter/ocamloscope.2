@@ -33,20 +33,28 @@ let query ngrok_mode data qs =
 
     | Some [qstr] ->
         begin match Query.parse qstr with
-        | [] -> qstr, `Bad_request, [ H.pcdata "Query parse failure" ]
-        | qs -> 
+        | [], _ -> qstr, `Bad_request, [ H.pcdata "Query parse failure" ]
+        | qs, warns ->
+            let warns = match warns with
+              | [] -> []
+              | _ ->
+                  [ H.div ~a: [H.a_class ["warning"]]
+                      & intersperse (H.br ())
+                      & map (fun s -> H.pcdata ("Warning: " ^ s)) warns
+                  ]
+            in
             let res = Exn.catch_ & fun () -> Query.query data pspec qs in
             match res with  
             | `Ok [] ->
-                qstr, `OK, [ H.pcdata "Empty result" ]
+                qstr, `OK, warns @ [ H.pcdata "Empty result" ]
             | `Ok res ->
-                qstr, `OK, [ Render.print_summary (Summary.group res) ]
+                qstr, `OK, warns @ [ Render.print_summary (Summary.group res) ]
             | `Error (`Exn e) -> 
                 let str =
                   let trace = Exn.get_backtrace () in
                   !% "Uncaught exception: %s\nBacktrace:\n%s\n" (Exn.to_string e) trace
                 in
-                qstr, `Internal_server_error, [ H.pcdata str ]
+                qstr, `Internal_server_error, warns @ [ H.pcdata str ]
         end
     | Some _ -> "", `Bad_request, [ H.pcdata "Illegal comma separated query" ]
   in

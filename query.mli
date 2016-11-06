@@ -13,9 +13,10 @@ type t = k option * q
 [@@deriving conv{ocaml_of}]
 (** Type of queries *)
 
-val parse : string -> t list
+val parse : string -> t list * string list
 (** Tries to parse a string as a query. 
     One string may be regarded as more than one form of queries.
+    The second member of the tuple is the warning messages.
 *)
 
 module PackageSpec : sig  
