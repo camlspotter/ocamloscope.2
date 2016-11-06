@@ -13,6 +13,8 @@ module Make(A : sig
   val ambiguous_docstrings : Ocamldoc.DocSet.t
 end) = struct
 
+  let noname_ESignature_cntr = ref (-1)
+      
   (** Obtain source file MD5 digest from Location.t *)
   let loc_digest =
     let cache = Hashtbl.create 17 in
@@ -829,8 +831,10 @@ end) = struct
           EFunctor ((KModule, i), mto, body)
   
       | Tmod_apply (m1, m2, _) ->
-          let m1 = module_expr c m1 in
-          let m2 = module_expr c m2 in
+          incr noname_ESignature_cntr;
+          let c' = Oide_dot (c, Printf.sprintf "<unknown%d>" !noname_ESignature_cntr) in
+          let m1 = module_expr c' m1 in
+          let m2 = module_expr c' m2 in
           EApply (m1, m2)
   
       | Tmod_unpack (_, mty) ->

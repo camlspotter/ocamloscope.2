@@ -15,10 +15,10 @@ and location = Location.t = { loc_start: position; loc_end: position; loc_ghost:
 
 type v =
   | Def     of def
-  | Aliased of v * v (*+ Aliased (v1, v2): thing defined originally at v2 is aliased at v1 *)
-  | Coerced of v * v
+  | Aliased of v * v (** [Aliased (v1, v2)]: thing defined originally at v2 is aliased at v1 *)
+  | Coerced of v * v (** [Coerced (v1, v2)]: [v1] is coerced by [v2] *)
   | LocNone
-  | Prim of string (*+ ex. "%addint" *)
+  | Prim of string (** ex. "%addint" *)
 
 and def = { path   : path
           ; loc    : location
@@ -36,8 +36,8 @@ and expr =
   | ESignature   of (id * expr) list
   | EApply       of expr * expr
   | EFunctor     of id * expr option * expr
-  | ECoerce      of expr * expr
-  | EWith        of expr * expr (* EWith (m, n): module type m = n with ...  m must be a subtype of n *)
+  | ECoerce      of expr * expr (** [ECoerce (m, n)]: [m] is coerced by [n] *)
+  | EWith        of expr * expr (** [EWith (m, n)]: [module type m = n with ...]  m must be a subtype of n *)
   | EModule      of v * expr
   | EModtype     of v * expr option
   | EType        of v * (id * expr) list
@@ -57,5 +57,8 @@ and expr =
 val format : Format.t -> expr -> unit
 
 val get_doc : v -> string option
-(* Get the best docstring. XXX not well tested *)
+(** Get the best docstring. *) (* XXX not well tested *)
+  
+val print_v : Format.t -> v -> unit
+(** Human friendly printer of [v] *)
   
