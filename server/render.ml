@@ -64,7 +64,7 @@ let path_last = function
 
 let hpath p = spans ~a:[H.a_class ["path"]] & Format.sprintf "%a" Xoprint.print_ident p
 
-let fsignature_item (i : Data.DB.item) =
+let fsignature_item orgdoc (i : Data.DB.item) =
   let open Data.DB in
   let open Sig in
   let open Outcometree in
@@ -243,10 +243,11 @@ let fsignature_item (i : Data.DB.item) =
   in
   let doc =
     match 
-      Option.bind i.Data.DB.v Hump.get_doc
+      orgdoc, Option.bind i.Data.DB.v Hump.get_doc
     with
-    | None -> []
-    | Some d ->  [ H.div ~a: [H.a_class [ "docstring" ]] [ H.pcdata d ] ]
+    | _, None -> [ H.div ~a: [H.a_class [ "docstring" ]] [ H.pcdata "no doc" ] ]
+    | Some orgd, Some d when orgd = d -> []
+    | _, Some d ->  [ H.div ~a: [H.a_class [ "docstring" ]] [ H.pcdata d ] ]
   in
   H.div ~a: [ H.a_class [ "item" ] ] ( fsig :: doc )
   (* @ [ H.pre [H.pcdata & Format.sprintf "@[%a@]" Hump.print_v (match i.v with Some v -> v | None -> Hump.LocNone) ]] *)
@@ -256,6 +257,11 @@ let print_summary (sum : ( (Sig.k * Data.alias)
                            * (int * Data.DB.item * 'trace1 * 'trace2) list list ) list) =
   let group i ((k, alias), _dist, xss) =
     let nonaliased, aliased = partition (fun (_,i,_,_) -> i.Data.DB.alias = None) & flatten xss in
+    let orgdoc = match filter_map (fun (_,i,_,_) -> Option.bind i.Data.DB.v Hump.get_doc) nonaliased with
+      | [] -> None
+      | [x] -> Some x
+      | _ -> None
+    in
     let nonaliased = match nonaliased with
       | [] ->
           H.div [
@@ -272,13 +278,13 @@ let print_summary (sum : ( (Sig.k * Data.alias)
                   ]
           ]
       | _ ->
-          H.div & map (fun (_,i,_,_) -> fsignature_item i) nonaliased
+          H.div & map (fun (_,i,_,_) -> fsignature_item None i) nonaliased
     in
     let aliased = match aliased with
       | [] -> []
       | _ -> [ H.div ~a:[H.a_class ["aliased"]]
                & H.div ~a:[H.a_class ["aliases"]] [ H.pcdata "aliases:" ]
-                 :: map (fun (_,i,_,_) -> fsignature_item i) aliased ]
+                 :: map (fun (_,i,_,_) -> fsignature_item orgdoc i) aliased ]
     in
     H.div ~a:[ H.a_class [ "group" ^ string_of_int (i mod 2) ] ]
       & [ nonaliased ]

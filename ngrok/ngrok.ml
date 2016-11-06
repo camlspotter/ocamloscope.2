@@ -52,7 +52,7 @@ let form () =
         assoc_and_fill "q" q;
         assoc_and_fill "packtype" packtype;
         assoc_and_fill "packs" packs;
-        ignore & query ()
+        if Js.to_string q##.value <> "" then ignore & query ()
     | _ -> ()
   in
   query_in_url ()

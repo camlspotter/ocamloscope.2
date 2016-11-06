@@ -70,9 +70,9 @@ let normalize s =
     | [] -> []
     | s::ss -> s :: get (len - String.length s) ss
   in
-  let s = String.concat ".  " & get 256 ss in
-  if String.length s <= 512 then s
-  else String.sub s 0 509 ^ "..."
+  let s = String.concat ".  " & get 140 ss in
+  if String.length s <= 280 then s
+  else String.sub s 0 277 ^ "..."
 
         
 

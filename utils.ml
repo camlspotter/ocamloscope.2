@@ -52,13 +52,6 @@ module Longident = struct
     | Pdot (id, n, _) -> Ldot (of_path id, n)
     | Papply (p1, p2) -> Lapply (of_path p1, of_path p2)
       
-  let rec of_rev_ids = function
-    | [] -> assert false
-    | [id] -> Lident (id.Ident.name)
-    | id::rev_ids ->
-        let lid = of_rev_ids rev_ids in
-        Ldot (lid, id.Ident.name)
-
   let rec fake_path = function
     | Lident s -> Pident (Ident.create s)
     | Ldot (l1,s) -> Pdot (fake_path l1, s, 0)
@@ -136,6 +129,11 @@ end
 
 let (!!) = Lazy.(!!)
 
+module FilePath = struct
+  type t = string [@@deriving conv{ocaml}]
+  (* This is a simple alias. Making it private requires lots of code change... *)
+end
+
 module Digest = struct
   open Typerep_lib.Std
 
@@ -143,6 +141,8 @@ module Digest = struct
 
   let cache = Hashtbl.create 101
 
+  let reset_cache () = Hashtbl.clear cache
+    
   (** Cached [Digest.file]. XXX Probably we need auto flush. *)
   let file = Hashtbl.find_or_add Digest.file cache
   (* XXX do we need it? *)
@@ -153,11 +153,6 @@ let criticalf fmt = Exn.raisef (fun x -> Critical x) fmt
   
 let command_name = "oco"
 
-module FilePath = struct
-  type t = string [@@deriving conv{ocaml}]
-  (* This is a simple alias. Making it private requires lots of code change... *)
-end
-
 (** Scan the directory [d] and returns the first file which stafisfies [p] *)
 let find_file_in_dir d p =
   Unix.Find.fold [d] None & fun st path ->
@@ -165,14 +160,6 @@ let find_file_in_dir d p =
     | Some _ -> `Prune, st
     | None -> if p path then `Prune, Some path else `Continue, None
 
-(** xxx.cmo => /yyy/zzz/xxx.cmo *)
-
-(*
-val find_in_path : FilePath.t list -> FilePath.t -> FilePath.t
-(** [find_in_path dirs m] finds the file [m] in the load path [dirs].
-    If not found it raises [Critical] error.
-*)
-*)
 let find_in_path dirs m =
   try
     Misc.find_in_path dirs m
