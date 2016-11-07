@@ -1476,14 +1476,15 @@ end) = struct
       let doc = Doc.get ci.ci_attributes in
       let c' = Oide_dot (c, ci.ci_id_name.txt) in
       let meths = class_type c' ci.ci_expr in (* XXX not sure at all!. XXX default case is wrong! *)
+      let v = def c' ci.ci_id_name.loc doc in
       [ (KClass, ci.ci_id_name.txt),
-        expr & EClass (def c' ci.ci_id_name.loc doc, meths)
+        expr & EClass (v, meths)
       ; (KClasstype, ci.ci_id_name.txt),
-        expr & EClasstype (def c' ci.ci_id_name.loc doc, meths)
+        EAddAlias (v, expr & EClasstype (v, meths))
       ; (KType, ci.ci_id_name.txt),
-        expr & EType (def c' ci.ci_id_name.loc doc, [])
+        EAddAlias (v, expr & EType (v, []))
       ; (KType, "#" ^ ci.ci_id_name.txt),
-        expr & EType (def c' ci.ci_id_name.loc doc, [])
+        EAddAlias (v, expr & EType (v, []))
       ]
       
   (*
@@ -1495,12 +1496,13 @@ end) = struct
       let doc = Doc.get ci.ci_attributes in
       let c' = Oide_dot (c, ci.ci_id_name.txt) in
       let meths = class_type c' ci.ci_expr in (* XXX not sure at all!. XXX default case is wrong! *)
+      let v = def c' ci.ci_id_name.loc doc in
       [ (KClasstype, ci.ci_id_name.txt),
-        expr & EClasstype (def c' ci.ci_id_name.loc doc, meths)
+        expr & EClasstype (v, meths)
       ; (KType, ci.ci_id_name.txt),
-        expr & EType (def c' ci.ci_id_name.loc doc, [])
+        EAddAlias (v, expr & EType (def c' ci.ci_id_name.loc doc, []))
       ; (KType, "#" ^ ci.ci_id_name.txt),
-        expr & EType (def c' ci.ci_id_name.loc doc, [])
+        EAddAlias (v, expr & EType (def c' ci.ci_id_name.loc doc, []))
       ]
   
   (*

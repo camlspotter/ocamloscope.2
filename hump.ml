@@ -37,7 +37,7 @@ and def = { path   : path
           }
 and id = k * string
 and expr =
-  | EGVar of path (* persistent module *)
+  | EGVar of path
   | EVar of k * string
   | EDot of expr * k * string
   | ELet of bool * (id * expr) list * expr
@@ -45,7 +45,7 @@ and expr =
   | EApply of expr * expr
   | EFunctor of id * expr option * expr
   | ECoerce of expr * expr
-  | EWith of expr * expr (* EWith (m, n): module type m = n with ...  m must be a subtype of n *)
+  | EWith of expr * expr
   | EModule of v * expr
   | EModtype of v * expr option
   | EType of v * (id * expr) list

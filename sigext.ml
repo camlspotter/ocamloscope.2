@@ -688,7 +688,7 @@ module Globalized = struct
       let string_of_ident x = sprintf "%a" Xoprint.print_ident x
       let string_of_type x = sprintf "%a" !Xoprint.out_type & simplif_type x 
   
-      let rec fmodule rec_ = function
+      let rec fmodule rec_ (* recursively prints internals *) = function
         | FSignature _ when not rec_ -> Omty_signature [Osig_ellipsis]
         | FSignature fs -> Omty_signature (fsignature rec_ fs)
         | FFunctor (id, fmo, fm') ->
