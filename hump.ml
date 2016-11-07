@@ -65,7 +65,8 @@ and expr =
 let format ppf = Ocaml.format_with ocaml_of_expr ppf
 
 let rec get_doc = function
-  | Prim _ | LocNone -> None
+  | Prim _ -> Some "Primitive."
+  | LocNone -> None
   | Def d -> d.doc
   | Aliased (v1,v2) ->
       begin match get_doc v1 with
