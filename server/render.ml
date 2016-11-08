@@ -257,10 +257,10 @@ let fsignature_item orgdoc (i : Data.DB.item) =
 *)
     )
     
-let print_summary (sum : ( (Sig.k * Data.alias)
+let print_summary (sum : ( Data.alias
                            * int
                            * (int * Data.DB.item * 'trace1 * 'trace2) list list ) list) =
-  let group i ((k, alias), _dist, xss) =
+  let group i (alias, _dist, xss) =
     let nonaliased, aliased = partition (fun (_,i,_,_) -> i.Data.DB.alias = None) & flatten xss in
     let orgdoc = match filter_map (fun (_,i,_,_) -> Option.bind i.Data.DB.v Hump.get_doc) nonaliased with
       | [] -> None
@@ -276,7 +276,7 @@ let print_summary (sum : ( (Sig.k * Data.alias)
                   [ spans ~a:[H.a_class ["kind"]] "primitive "
                   ; spans n
                   ]
-            | Path p ->
+            | Path (k,p) ->
                 H.div ~a: [H.a_class [ "original" ]]
                   [ spans ~a:[H.a_class ["kind"]] (Sig.string_of_k k ^ " ")
                   ; hpath p
