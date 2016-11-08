@@ -43,7 +43,7 @@ end
 
 (** Alias information *)
 type alias =
-  | Path of out_ident (** Alias of some path *)
+  | Path of k * out_ident (** Alias of some k * path *)
   | Primitive of string (** A primitive %xxx *)
   [@@deriving conv{ocaml_of}, typerep]
 

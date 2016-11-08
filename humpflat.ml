@@ -78,7 +78,8 @@ let flatten p me =
     in
     sigitem x
   in
-  ((KModule, p), Def { path= p
+  ((KModule, p), Def { kind= KModule
+                     ; path= p
                      ; loc= Location.none
                      ; digest= None
                      ; doc= None (*XXX*)

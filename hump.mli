@@ -20,7 +20,8 @@ type v =
   | LocNone
   | Prim of string (** ex. "%addint" *)
 
-and def = { path   : path
+and def = { kind   : k
+          ; path   : path
           ; loc    : location
           ; digest : Digest.t option (** source file digest *)
           ; doc    : string option

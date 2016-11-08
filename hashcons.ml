@@ -123,8 +123,9 @@ module Hump_v = struct
   let rec hump_v v =
     try Hashtbl.find cache v with Not_found ->
       let v'  = match v with
-        | Hump.Def { path= p; loc= l; digest= dopt; doc } ->
-            Hump.Def { path= Out_ident.hcons p
+        | Hump.Def { kind; path= p; loc= l; digest= dopt; doc } ->
+            Hump.Def { kind
+                     ; path= Out_ident.hcons p
                      ; loc= Location.t l
                      ; digest= Option.fmap String.hcons dopt
                      ; doc= Option.fmap String.hcons doc
@@ -233,7 +234,7 @@ module Alias = struct
     try Hashtbl.find cache x with Not_found ->
       let x = match x with
         | Data.Primitive p -> Data.Primitive (String.hcons p)
-        | Path p -> Path (Out_ident.hcons p)
+        | Path (k,p) -> Path (k, Out_ident.hcons p)
       in
       Hashtbl.add cache x x;
       x

@@ -10,10 +10,11 @@ let flatten_result xs : (int * DB.item * 'trace1 * 'trace2) list =
 
 let item (_, i, _, _ : int * DB.item * 'trace1 * 'trace2) = i
   
+(* Give the item self as an alias if it has none *)
 let alias i =
   match i.alias with
-  | None -> (i.kind, Path i.path)
-  | Some p -> (i.kind, p)
+  | None -> Path (i.kind, i.path)
+  | Some p -> p
   
 let path db = db.path
 
@@ -27,7 +28,7 @@ let path_complexity p =
     
 let alias_complexity = function
   | Primitive _ -> 0
-  | Path p -> path_complexity p
+  | Path (_,p) -> path_complexity p
     
 let package = function
   | Oide_ident _ -> None (* predef *)
@@ -41,7 +42,7 @@ let package = function
 
 let package_of_alias = function
   | Primitive _ -> None
-  | Path p -> package p
+  | Path (_,p) -> package p
       
 let top_package = function
   | None -> None
@@ -68,8 +69,8 @@ let compare_top_packages x y = match x, y with
 
 (* group by the aliases, then sort by the lowest distance *)
 let group_by_alias (xs : (int * DB.item * 'trace1 * 'trace2) list)
-    : ((Sig.k * alias) * int * (int * DB.item * 'trace1 * 'trace2) list) list =
-  let compare_groups ((_k1,a1),d1,_xs1) ((_k2,a2),d2,_xs2) =
+    : (alias * int * (int * DB.item * 'trace1 * 'trace2) list) list =
+  let compare_groups (a1,d1,_xs1) (a2,d2,_xs2) =
     compare d1 d2 >>> fun () -> 
     compare_top_packages (top_package & package_of_alias a1) (top_package & package_of_alias a2) >>> fun () ->
     compare (alias_complexity a1) (alias_complexity a2)
@@ -93,32 +94,39 @@ let sort_inside_group items : (int * DB.item * 'trace1 * 'trace2) list list =
            (top_package & package & path & item x)
            (top_package & package & path & item y)) aliased)
 
-let group xs : ((Sig.k * alias) * int * (int * DB.item * 'trace1 * 'trace2) list list) list =
+let group xs : (alias * int * (int * DB.item * 'trace1 * 'trace2) list list) list =
   map (fun (alias, d, xs) -> (alias, d, sort_inside_group xs))
   & group_by_alias
   & flatten_result xs
 
 let format_alias ppf = function
-  | Path p -> Xoprint.print_ident ppf p (*XXX fsig.  The value may be hidden by signature *)
+  | Path (k,p) ->
+      Format.fprintf ppf "%s %a"
+        (Sig.string_of_k k)
+        Xoprint.print_ident p (*XXX fsig.  The value may be hidden by signature *)
   | Primitive n -> Format.fprintf ppf "primitive %s" n
 
-let final_print ppf (g : ((Sig.k * alias) * int * (int * DB.item * 'trace1 * 'trace2) list list) list)  = flip iter g & fun ((_k,a), d, (xss : (int * DB.item * 'trace1 * 'trace2) list list) ) ->
-  let nonaliased, aliased = partition (fun (_,i,_,_) -> i.alias = None) & flatten xss in
+let final_print ppf (g : (alias * int * (int * DB.item * 'trace1 * 'trace2) list list) list)  = flip iter g & fun (a, d, (xss : (int * DB.item * 'trace1 * 'trace2) list list) ) ->
+  let nonaliased, aliased = partition (fun i -> i.alias = None) & map (fun (_,i,_,_) -> i) & flatten xss in
   let (!!%) fmt = Format.fprintf ppf fmt in
-  let fsig (_,i,_,_) = Data.DB.fsignature_item i in
+  let fsig i = Data.DB.fsignature_item i in
 
-  let doc (_,i,_,_) = Option.bind i.DB.v Hump.get_doc in
+  let doc i = Option.bind i.DB.v Hump.get_doc in
 
   let format_item ppf x =
     let fsig = fsig x in
     let doc = doc x in
-    match doc with
+    begin match doc with
     | None -> 
-        Sigext.Print.fsignature_item false ppf fsig
+        Sigext.Print.fsignature_item false ppf fsig;
+        Format.fprintf ppf "@."
     | Some doc ->
-        Format.fprintf ppf "@[<v>%a@,(** %s *)@]"
+        Format.fprintf ppf "@[<v>%a@,(** %s *)@]@."
           (Sigext.Print.fsignature_item false) fsig
           doc
+    end;
+    (* XXX need switch *)
+    Format.fprintf ppf "@[%a@]@." (Option.format Hump.print_v) x.DB.v
   in
   match nonaliased with
   | [] ->

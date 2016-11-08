@@ -30,7 +30,8 @@ type v =
   | Coerced of v * v
   | LocNone
   | Prim of string (*+ ex. "%addint" *)
-and def = { path   : path
+and def = { kind   : k
+          ; path   : path
           ; loc    : location
           ; digest : Digest.t option (** source file digest *)
           ; doc    : string option
@@ -82,7 +83,7 @@ let rec print_v ppf =
   let open Format in
   function
     | Def d -> fprintf ppf "%a at %a"
-        (Ocaml.format_with ocaml_of_path) d.path (* XXX make the printer as a library function *)
+        (Ocaml.format_with [%derive.ocaml_of: k * path]) (d.kind, d.path) (* XXX make the printer as a library function *)
         Location.print_compact d.loc
     | Aliased (v1, v2) ->
         fprintf ppf "@[<v2>Aliased at@ %a@ org-defined at %a@]" print_v v1 print_v v2
