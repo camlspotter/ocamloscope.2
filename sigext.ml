@@ -84,14 +84,14 @@ module Scrape = struct
     | SSignature of ssignature
     | SUNKNOWN_ident of Path.t (** scrape failed Mty_ident *)
     | SUNKNOWN_alias of Path.t (** scrape failed Mty_alias *)
-  
   [@@deriving conv{ocaml_of}]
 
   let warned_scrape_failures = ref []
 
-  let rec signature env sg = rev & snd & flip2 fold_left (env,[]) sg & fun (env,rev_is) i ->
-    let env, i = signature_item env i in
-    env,i::rev_is 
+  let rec signature env sg =
+    rev & snd & flip2 fold_left (env,[]) sg & fun (env,rev_is) i ->
+      let env, i = signature_item env i in
+      env,i::rev_is 
   
   and signature_item env i =
     let env = Env.add_item i env in
@@ -577,10 +577,11 @@ module Scan_ids = struct
     let add id p = 
       match Hashtbl.find_opt tbl id with
       | None -> Hashtbl.add tbl id p
-      | Some _ ->
-(*          !!% "Warning double binding of %s@." id.Ident.name;
-*)
-          ()
+      | Some p' ->
+          !!% "Warning double binding of %s (%s and %s)@."
+            id.Ident.name
+            (Path.string_of p)
+            (Path.string_of p')
         
     let rec fsignature c s = iter (fsignature_item c) s
   
@@ -622,7 +623,7 @@ module Scan_ids = struct
       | FRecord fsg | FVariant fsg -> fsignature c fsg
   end
 
-  (* [p] is the global access path to the module *)
+  (* [po] is the global access path to the module *)
   let scan po s =
     let module M = Make(struct let tbl = Hashtbl.create 107 end) in
     M.fsignature po s;
@@ -635,7 +636,7 @@ module Scan_ids = struct
 
   let rewrite tbl p =
     try rewrite tbl p with Not_found ->
-      !!% "Path %s was not found in rewrite table@." (Path.string_of p);
+      !!% "WARNING: Path %s was not found in rewrite table@." (Path.string_of p);
       raise Not_found
 end
 
@@ -648,286 +649,7 @@ end
 module Globalized = struct
 
   module F = Flatten
-
-  module Print = struct
-    open Format
-    open Outcometree
-
-    let simplif_type path ty =
-      let rec f t = match t with
-        | Otyp_abstract -> t
-        | Otyp_open -> t
-        | Otyp_alias (t, s) -> Otyp_alias (f t, s)
-        | Otyp_arrow (s, t1, t2) -> Otyp_arrow (s, f t1, f t2)
-        | Otyp_class (b, i, ts) -> Otyp_class (b, path i, map f ts)
-        | Otyp_constr (i, ts) -> Otyp_constr (path i, map f ts)
-        | Otyp_manifest (t1, t2) -> Otyp_manifest (f t1, f t2)
-        | Otyp_object (xs, bo) -> Otyp_object (map (fun (s,t) -> (s,f t)) xs, bo)
-        | Otyp_record fs -> Otyp_record (map (fun (s,b,t) -> (s,b,f t)) fs)
-        | Otyp_stuff _ -> t
-        | Otyp_sum xs ->
-            Otyp_sum (map (fun (s,ts,topt) -> (s,map f ts,Option.fmap f topt)) xs)
-        | Otyp_tuple ts -> Otyp_tuple (map f ts)
-        | Otyp_var (b,s) -> Otyp_var (b,s)
-        | Otyp_variant (b, ov, b', sso) ->
-            Otyp_variant (b, variant ov, b', sso)
-        | Otyp_poly (ss, t) -> Otyp_poly (ss, f t)
-        | Otyp_module (s, ss, ts) -> Otyp_module (s, ss, map f ts)
-        | Otyp_attribute (t, a) -> Otyp_attribute (f t, a)
-      and variant = function
-        | Ovar_fields fs ->
-            Ovar_fields (map (fun (s,b,ts) -> (s,b,map f ts)) fs)
-        | Ovar_name (i, ts) -> Ovar_name (path i, map f ts)
-      in
-      f ty
-      
-    module Make(A : sig val path_simplifier : out_ident -> out_ident end) = struct
-      let simplif_type = simplif_type A.path_simplifier
-
-      (* We cannot do partial application since sprintf has side-effect inside! *)
-      let string_of_ident x = sprintf "%a" Xoprint.print_ident x
-      let string_of_type x = sprintf "%a" !Xoprint.out_type & simplif_type x 
-  
-      let rec fmodule rec_ (* recursively prints internals *) = function
-        | FSignature _ when not rec_ -> Omty_signature [Osig_ellipsis]
-        | FSignature fs -> Omty_signature (fsignature rec_ fs)
-        | FFunctor (id, fmo, fm') ->
-            Omty_functor (string_of_ident id, Option.fmap (fmodule rec_) fmo, fmodule rec_ fm')
-        | FUNKNOWN_ident path -> Omty_ident path
-        | FUNKNOWN_alias path -> Omty_alias path
-  
-      and fsignature rec_ fs = filter_map (fsignature_item rec_) fs
-  
-      and rec_status = function
-        | Trec_not -> Orec_not
-        | Trec_first -> Orec_first
-        | Trec_next -> Orec_next
-  
-      and ftypekind rec_ = function
-        | FAbstract -> Otyp_abstract
-        | FOpen -> Otyp_open
-
-        | FRecord fs when rec_ -> 
-            Otyp_record (flip map fs & function
-              | ((_,path), FRecordField (mf, Otyp_arrow ("", _, t))) ->
-                  let n = match path with
-                    | Oide_ident n -> n
-                    | Oide_dot (_,n) -> n
-                    | Oide_apply _ -> assert false
-                  in
-                  (n, mf = Mutable, simplif_type t)
-              | _ -> assert false)
-        | FRecord _fs -> Otyp_stuff "{ ... }"
-              
-        | FVariant fs when rec_ -> 
-            Otyp_sum (flip map fs & function
-              | ((_,path), FVariantConstructor (Otyp_arrow ("", t, _), rto)) ->
-                  let n = match path with
-                    | Oide_ident n -> n
-                    | Oide_dot (_,n) -> n
-                    | Oide_apply _ -> assert false
-                  in
-                  (n,
-                   map simplif_type 
-                   begin match t with
-                   | Otyp_record _ -> [t]
-                   | Otyp_tuple ts -> ts
-                   | _ -> assert false
-                   end, 
-                   Option.fmap simplif_type rto)
-              | ((_,path), FVariantConstructor (_, rto)) -> (* 0-ary *)
-                  (string_of_ident path,
-                   [], 
-                   Option.fmap simplif_type rto)
-              | _, f ->
-                  !!% "%a@." (Ocaml.format_with [%derive.ocaml_of : Sig.res]) f;
-                  assert false)
-        | FVariant _fs -> Otyp_stuff "| ..."
-            
-  
-      and fsignature_item rec_ ((_k,path), res) = match res with
-        | FModule (fm, r) ->
-            Some (Osig_module (string_of_ident path, fmodule rec_ fm, rec_status r))
-        | FModtype None -> 
-            Some (Osig_modtype (string_of_ident path, Omty_abstract))
-        | FModtype (Some fm) -> 
-            Some (Osig_modtype (string_of_ident path, fmodule rec_ fm))
-        | FType (tys, ftk, pf, tyo, r) -> 
-            let otd = 
-              { otype_name = string_of_ident path
-              ; otype_params = 
-                  map (function
-                    | Otyp_var (_, a) -> a, (true, true) (* TODO *)
-                    | _ -> "?", (true, true)) tys
-              ; otype_type = begin
-                let fty = ftypekind rec_ ftk in
-                simplif_type &
-                Option.fmap (fun t -> Otyp_manifest (t,fty)) tyo // fty
-              end
-              ; otype_private = pf 
-              ; otype_immediate = false (* TODO *)
-              ; otype_cstrs = [] (* TODO constraints *)
-              }
-            in
-            Some (Osig_type (otd, rec_status r))
-        | FTypextRaw _ -> assert false
-        | FTypext (ts, t', rto, pf) ->
-            let args, rt  = match t' with
-              | Otyp_arrow ("", ts, rt) ->
-                  begin match ts with
-                  | Otyp_tuple ts -> ts, rt
-                  | Otyp_record _ -> [ts], rt
-                  | _ -> assert false
-                  end
-              | _ -> assert false
-            in
-            let oext_type_name = match rt with
-              | Otyp_constr (oi, _) -> string_of_ident oi
-              | _ -> assert false
-            in
-            let oec =
-              { oext_name        = string_of_ident path
-              ; oext_type_name
-              ; oext_type_params = map string_of_type ts
-              ; oext_args        = map simplif_type args
-              ; oext_ret_type    = Option.fmap simplif_type rto
-              ; oext_private     = pf }
-            in
-            Some (Osig_typext (oec, Oext_first)) (* /Oext_next/Oext_exception*)
-  
-        | FValue (t, sk) ->
-            Some (Osig_value { oval_name = string_of_ident path
-                             ; oval_type = simplif_type t
-                             ; oval_attributes = []
-                             ; oval_prims = match sk with
-                                            | SVal_prim -> ["dummy"]  (* will not be printed *)
-                                            | SVal_reg -> []
-                             })
-        | FRecordField _ -> None
-        | FVariantConstructorRaw _ -> assert false
-        | FVariantConstructor _ -> None
-        | FMethod _ -> None
-        | FClass (tys, _fs, t, _p, (vf, r)) -> 
-            let clt = 
-              let rec f = function
-                | Otyp_arrow (s, t1, t2) -> Octy_arrow (s, t1, f t2)
-                | Otyp_object (meths, _ (* CR jfuruse: todo None: closed, Some true: _.., Some false: .. *) ) ->
-                    (* CR jfuruse: we should use fs instead of t? *)
-                    Octy_signature (None (* CR jfuruse: self_ty*), 
-                                    flip map meths & fun (s,t) ->
-                                      Ocsg_method (s, true (*?*), true(*?*), t))
-                | Otyp_alias (t, a) ->
-                    (* not sure... *)
-                    begin match f t with
-                    | Octy_signature (None, xs) ->
-                        Octy_signature (Some (Otyp_var (false, a)), xs)
-                    | _ -> assert false
-                    end
-                | t -> 
-                    !!% "?!?!: %s@." (string_of_type t);
-                    assert false
-              in
-              f & simplif_type t
-            in
-            Some (Osig_class (vf = Virtual,
-                              string_of_ident path,
-                              map (fun t -> string_of_type t, (true, true) (* TODO *)) tys,
-                              clt,
-                              rec_status r))
-        | FClassType (pars, _fs, t, _p, (vf, r)) ->
-            let clt = 
-              let rec f = function
-                | Otyp_arrow (s, t1, t2) -> Octy_arrow (s, t1, f t2)
-                | Otyp_object (meths, _ (* CR jfuruse: todo None: closed, Some true: _.., Some false: .. *) ) ->
-                    (* CR jfuruse: we should use fs instead of t? *)
-                    Octy_signature (None (* CR jfuruse: self_ty*), 
-                                    flip map meths & fun (s,t) ->
-                                      Ocsg_method (s, true (*?*), true(*?*), t))
-                | Otyp_alias (t, a) ->
-                    (* not sure... *)
-                    begin match f t with
-                    | Octy_signature (None, xs) ->
-                        Octy_signature (Some (Otyp_var (false, a)), xs)
-                    | _ -> assert false
-                    end
-                | t -> 
-                    !!% "?!?!: %s@." (string_of_type t);
-                    assert false
-              in
-              f & simplif_type t
-            in
-            Some (Osig_class_type (vf = Virtual,
-                                   string_of_ident path,
-                                   map (fun t -> string_of_type t, (true, true) (* TODO *)) pars,
-                                   clt,
-                                   rec_status r))
-    end
-
-    let path_simplifier k p =
-      let rec get_package = function
-        | Oide_ident s when s.[0] = '{' -> Some s
-        | Oide_ident _ -> None
-        | Oide_dot( i, _ ) -> get_package i
-        | Oide_apply( i, _ ) -> get_package i
-      in
-      let package = get_package p in
-
-      (* Prefix requires special handling for methods, since
-         they have paths like M.N.O.classname.methodname
-      *)
-      let prefix = match p with
-        | Oide_dot (Oide_dot (i, _), _) when k = KMethod -> Some i
-        | Oide_dot (i, _) -> Some i
-        | _ -> None
-      in
-      let rec f = function
-        | p when Some p = prefix -> None
-        | Oide_ident s when Some s = package -> None
-        | Oide_ident _ as i -> Some i
-        | Oide_dot( i, x ) ->
-            begin match f i with
-            | None -> Some (Oide_ident x)
-            | Some i -> Some (Oide_dot ( i, x ))
-            end
-        | Oide_apply( i, x ) as i0 -> 
-            begin match f i with
-            | None -> (* strange *) Some i0
-            | Some i -> Some (Oide_apply ( i, x ))
-            end
-      in
-      fun q ->
-        match f q with
-        | Some x -> x
-        | None -> q
-
-    let fsignature_item rec_ ppf ((k,path), res as si) =
-      let module M = Make(struct let path_simplifier = path_simplifier k path end) in
-      match M.fsignature_item rec_ si with
-      | Some x -> !Xoprint.out_sig_item ppf x
-      | None ->
-          let print_ident = Xoprint.print_ident in
-          let out_type ppf = !Xoprint.out_type ppf *< M.simplif_type in
-          match res with
-          | FRecordField (Mutable, t) -> 
-              fprintf ppf "@[<2>field mutable %a :@ @[%a@]@]"
-                print_ident path
-                out_type t
-          | FRecordField (Immutable, t) -> 
-              fprintf ppf "@[<2>field %a :@ @[%a@]@]"
-                print_ident path
-                out_type t
-          | FVariantConstructor (t, _rto) ->
-              fprintf ppf "@[<2>constr %a :@ @[%a@]@]"
-                print_ident path
-                out_type t
-          | FMethod t ->
-              fprintf ppf "@[<2>method %a :@ @[%a@]@]"
-                print_ident path
-                out_type t
-          | _ -> assert false
-
-  end
-
+    
   module Make(A : sig
     val rewrite : Path.t -> Path.t
   end) = struct
@@ -940,36 +662,36 @@ module Globalized = struct
       | F.FCRecord id_mf_ty_list ->
           Otyp_record (map (fun (id, mf, ty) ->
             id.Ident.name, mf = Mutable, conv_ty ty) id_mf_ty_list)
-      | F.FCTuple tys -> Otyp_tuple (map conv_ty tys)
+      | FCTuple tys -> Otyp_tuple (map conv_ty tys)
   
     let rec res x = match x with
       | F.FModule (fm,r) -> FModule (fmodule fm, r)
-      | F.FModtype fmo -> FModtype (Option.fmap fmodule fmo)
-      | F.FType (tys, ftk, pf, tyo, r) ->
+      | FModtype fmo -> FModtype (Option.fmap fmodule fmo)
+      | FType (tys, ftk, pf, tyo, r) ->
           FType (map conv_ty tys, ftypekind ftk, pf, Option.fmap conv_ty tyo, r)
-      | F.FTypext _ -> assert false
-      | F.FTypextRaw (tys, fcas, ty', rto, pf) ->
+      | FTypext _ -> assert false
+      | FTypextRaw (tys, fcas, ty', rto, pf) ->
           FTypext (map conv_ty tys,
                    (Otyp_arrow ("", fconstructor_arguments fcas, conv_ty ty')),
                    Option.fmap conv_ty rto,
                    pf)
-      | F.FValue (ty, svk) -> FValue (conv_ty ty, svk)
-      | F.FRecordField (mf, ty) -> FRecordField (mf, conv_ty ty)
-      | F.FVariantConstructor _ -> assert false
-      | F.FVariantConstructorRaw (fcas, t, rto) ->
+      | FValue (ty, svk) -> FValue (conv_ty ty, svk)
+      | FRecordField (mf, ty) -> FRecordField (mf, conv_ty ty)
+      | FVariantConstructor _ -> assert false
+      | FVariantConstructorRaw (fcas, t, rto) ->
           begin match fconstructor_arguments fcas with
           | Otyp_tuple [] ->
               FVariantConstructor (conv_ty t, Option.fmap conv_ty rto)
           | _ -> 
               FVariantConstructor (Otyp_arrow ("", fconstructor_arguments fcas, conv_ty t), Option.fmap conv_ty rto)
           end
-      | F.FClass (tys, fsg, newty, p, (vf, (*tyo, *) r)) -> (* CR jfuruse: p is a type?!?!? *)
+      | FClass (tys, fsg, newty, p, (vf, (*tyo, *) r)) -> (* CR jfuruse: p is a type?!?!? *)
           FClass (map conv_ty tys, fsignature fsg, conv_ty newty,
                   tree_of_path p, (vf, r))
-      | F.FClassType (tys, fsg, newty, p, (vf, r)) -> (* CR jfuruse: p is a type?!?!? *)
+      | FClassType (tys, fsg, newty, p, (vf, r)) -> (* CR jfuruse: p is a type?!?!? *)
           FClassType (map conv_ty tys, fsignature fsg, conv_ty newty,
                       tree_of_path p, (vf, r))
-      | F.FMethod ty -> FMethod (conv_ty ty)
+      | FMethod ty -> FMethod (conv_ty ty)
   
     and ftypekind = function
       | FAbstract -> FAbstract
@@ -992,9 +714,6 @@ end
 include Globalized
 
 module Rewrite = struct
-  open Spotlib.Spot
-  open Utils
-  open List
   open Path
   
   let notfound = Ident.create "NOTOP"
@@ -1049,6 +768,285 @@ module Rewrite = struct
     | Papply(p1,p2) -> Papply(rewrite f p1, rewrite f p2)
 end
   
+module Print = struct
+  open Format
+  open Outcometree
+
+  let map_over_path path ty =
+    let rec f t = match t with
+      | Otyp_abstract -> t
+      | Otyp_open -> t
+      | Otyp_alias (t, s) -> Otyp_alias (f t, s)
+      | Otyp_arrow (s, t1, t2) -> Otyp_arrow (s, f t1, f t2)
+      | Otyp_class (b, i, ts) -> Otyp_class (b, path i, map f ts)
+      | Otyp_constr (i, ts) -> Otyp_constr (path i, map f ts)
+      | Otyp_manifest (t1, t2) -> Otyp_manifest (f t1, f t2)
+      | Otyp_object (xs, bo) -> Otyp_object (map (fun (s,t) -> (s,f t)) xs, bo)
+      | Otyp_record fs -> Otyp_record (map (fun (s,b,t) -> (s,b,f t)) fs)
+      | Otyp_stuff _ -> t
+      | Otyp_sum xs ->
+          Otyp_sum (map (fun (s,ts,topt) -> (s,map f ts,Option.fmap f topt)) xs)
+      | Otyp_tuple ts -> Otyp_tuple (map f ts)
+      | Otyp_var (b,s) -> Otyp_var (b,s)
+      | Otyp_variant (b, ov, b', sso) ->
+          Otyp_variant (b, variant ov, b', sso)
+      | Otyp_poly (ss, t) -> Otyp_poly (ss, f t)
+      | Otyp_module (s, ss, ts) -> Otyp_module (s, ss, map f ts)
+      | Otyp_attribute (t, a) -> Otyp_attribute (f t, a)
+    and variant = function
+      | Ovar_fields fs ->
+          Ovar_fields (map (fun (s,b,ts) -> (s,b,map f ts)) fs)
+      | Ovar_name (i, ts) -> Ovar_name (path i, map f ts)
+    in
+    f ty
+    
+  module Make(A : sig val simplif_path : out_ident -> out_ident end) = struct
+    let simplif_type = map_over_path A.simplif_path
+
+    (* We cannot do partial application since sprintf has side-effect inside! *)
+    let string_of_ident x = sprintf "%a" Xoprint.print_ident x
+    let string_of_type x = sprintf "%a" !Xoprint.out_type & simplif_type x 
+
+    let rec fmodule rec_ (* recursively prints internals *) = function
+      | FSignature _ when not rec_ -> Omty_signature [Osig_ellipsis]
+      | FSignature fs -> Omty_signature (fsignature rec_ fs)
+      | FFunctor (id, fmo, fm') ->
+          Omty_functor (string_of_ident id, Option.fmap (fmodule rec_) fmo, fmodule rec_ fm')
+      | FUNKNOWN_ident path -> Omty_ident path
+      | FUNKNOWN_alias path -> Omty_alias path
+
+    and fsignature rec_ fs = filter_map (fsignature_item rec_) fs
+
+    and rec_status = function
+      | Trec_not -> Orec_not
+      | Trec_first -> Orec_first
+      | Trec_next -> Orec_next
+
+    and ftypekind rec_ = function
+      | FAbstract -> Otyp_abstract
+      | FOpen -> Otyp_open
+
+      | FRecord fs when rec_ -> 
+          Otyp_record (flip map fs & function
+            | ((_,path), FRecordField (mf, Otyp_arrow ("", _, t))) ->
+                let n = match path with
+                  | Oide_ident n -> n
+                  | Oide_dot (_,n) -> n
+                  | Oide_apply _ -> assert false
+                in
+                (n, mf = Mutable, simplif_type t)
+            | _ -> assert false)
+      | FRecord _fs -> Otyp_stuff "{ ... }"
+            
+      | FVariant fs when rec_ -> 
+          Otyp_sum (flip map fs & function
+            | ((_,path), FVariantConstructor (Otyp_arrow ("", t, _), rto)) ->
+                let n = match path with
+                  | Oide_ident n -> n
+                  | Oide_dot (_,n) -> n
+                  | Oide_apply _ -> assert false
+                in
+                (n,
+                 map simplif_type 
+                 begin match t with
+                 | Otyp_record _ -> [t]
+                 | Otyp_tuple ts -> ts
+                 | _ -> assert false
+                 end, 
+                 Option.fmap simplif_type rto)
+            | ((_,path), FVariantConstructor (_, rto)) -> (* 0-ary *)
+                (string_of_ident path,
+                 [], 
+                 Option.fmap simplif_type rto)
+            | _, f ->
+                !!% "%a@." (Ocaml.format_with [%derive.ocaml_of : Sig.res]) f;
+                assert false)
+      | FVariant _fs -> Otyp_stuff "| ..."
+          
+
+    and fsignature_item rec_ ((_k,path), res) = match res with
+      | FModule (fm, r) ->
+          Some (Osig_module (string_of_ident path, fmodule rec_ fm, rec_status r))
+      | FModtype None -> 
+          Some (Osig_modtype (string_of_ident path, Omty_abstract))
+      | FModtype (Some fm) -> 
+          Some (Osig_modtype (string_of_ident path, fmodule rec_ fm))
+      | FType (tys, ftk, pf, tyo, r) -> 
+          let otd = 
+            { otype_name = string_of_ident path
+            ; otype_params = 
+                map (function
+                  | Otyp_var (_, a) -> a, (true, true) (* TODO *)
+                  | _ -> "?", (true, true)) tys
+            ; otype_type = begin
+              let fty = ftypekind rec_ ftk in
+              simplif_type &
+              Option.fmap (fun t -> Otyp_manifest (t,fty)) tyo // fty
+            end
+            ; otype_private = pf 
+            ; otype_immediate = false (* TODO *)
+            ; otype_cstrs = [] (* TODO constraints *)
+            }
+          in
+          Some (Osig_type (otd, rec_status r))
+      | FTypextRaw _ -> assert false
+      | FTypext (ts, t', rto, pf) ->
+          let args, rt  = match t' with
+            | Otyp_arrow ("", ts, rt) ->
+                begin match ts with
+                | Otyp_tuple ts -> ts, rt
+                | Otyp_record _ -> [ts], rt
+                | _ -> assert false
+                end
+            | _ -> assert false
+          in
+          let oext_type_name = match rt with
+            | Otyp_constr (oi, _) -> string_of_ident oi
+            | _ -> assert false
+          in
+          let oec =
+            { oext_name        = string_of_ident path
+            ; oext_type_name
+            ; oext_type_params = map string_of_type ts
+            ; oext_args        = map simplif_type args
+            ; oext_ret_type    = Option.fmap simplif_type rto
+            ; oext_private     = pf }
+          in
+          Some (Osig_typext (oec, Oext_first)) (* /Oext_next/Oext_exception*)
+
+      | FValue (t, sk) ->
+          Some (Osig_value { oval_name = string_of_ident path
+                           ; oval_type = simplif_type t
+                           ; oval_attributes = []
+                           ; oval_prims = match sk with
+                                          | SVal_prim -> ["dummy"]  (* will not be printed *)
+                                          | SVal_reg -> []
+                           })
+      | FRecordField _ -> None
+      | FVariantConstructorRaw _ -> assert false
+      | FVariantConstructor _ -> None
+      | FMethod _ -> None
+      | FClass (tys, _fs, t, _p, (vf, r)) -> 
+          let clt = 
+            let rec f = function
+              | Otyp_arrow (s, t1, t2) -> Octy_arrow (s, t1, f t2)
+              | Otyp_object (meths, _ (* CR jfuruse: todo None: closed, Some true: _.., Some false: .. *) ) ->
+                  (* CR jfuruse: we should use fs instead of t? *)
+                  Octy_signature (None (* CR jfuruse: self_ty*), 
+                                  flip map meths & fun (s,t) ->
+                                    Ocsg_method (s, true (*?*), true(*?*), t))
+              | Otyp_alias (t, a) ->
+                  (* not sure... *)
+                  begin match f t with
+                  | Octy_signature (None, xs) ->
+                      Octy_signature (Some (Otyp_var (false, a)), xs)
+                  | _ -> assert false
+                  end
+              | t -> 
+                  !!% "?!?!: %s@." (string_of_type t);
+                  assert false
+            in
+            f & simplif_type t
+          in
+          Some (Osig_class (vf = Virtual,
+                            string_of_ident path,
+                            map (fun t -> string_of_type t, (true, true) (* TODO *)) tys,
+                            clt,
+                            rec_status r))
+      | FClassType (pars, _fs, t, _p, (vf, r)) ->
+          let clt = 
+            let rec f = function
+              | Otyp_arrow (s, t1, t2) -> Octy_arrow (s, t1, f t2)
+              | Otyp_object (meths, _ (* CR jfuruse: todo None: closed, Some true: _.., Some false: .. *) ) ->
+                  (* CR jfuruse: we should use fs instead of t? *)
+                  Octy_signature (None (* CR jfuruse: self_ty*), 
+                                  flip map meths & fun (s,t) ->
+                                    Ocsg_method (s, true (*?*), true(*?*), t))
+              | Otyp_alias (t, a) ->
+                  (* not sure... *)
+                  begin match f t with
+                  | Octy_signature (None, xs) ->
+                      Octy_signature (Some (Otyp_var (false, a)), xs)
+                  | _ -> assert false
+                  end
+              | t -> 
+                  !!% "?!?!: %s@." (string_of_type t);
+                  assert false
+            in
+            f & simplif_type t
+          in
+          Some (Osig_class_type (vf = Virtual,
+                                 string_of_ident path,
+                                 map (fun t -> string_of_type t, (true, true) (* TODO *)) pars,
+                                 clt,
+                                 rec_status r))
+  end
+
+  let path_simplifier k p =
+    let rec get_package = function
+      | Oide_ident s when s.[0] = '{' -> Some s
+      | Oide_ident _ -> None
+      | Oide_dot( i, _ ) -> get_package i
+      | Oide_apply( i, _ ) -> get_package i
+    in
+    let package = get_package p in
+
+    (* Prefix requires special handling for methods, since
+       they have paths like M.N.O.classname.methodname
+    *)
+    let prefix = match p with
+      | Oide_dot (Oide_dot (i, _), _) when k = KMethod -> Some i
+      | Oide_dot (i, _) -> Some i
+      | _ -> None
+    in
+    let rec f = function
+      | p when Some p = prefix -> None
+      | Oide_ident s when Some s = package -> None
+      | Oide_ident _ as i -> Some i
+      | Oide_dot( i, x ) ->
+          begin match f i with
+          | None -> Some (Oide_ident x)
+          | Some i -> Some (Oide_dot ( i, x ))
+          end
+      | Oide_apply( i, x ) as i0 -> 
+          begin match f i with
+          | None -> (* strange *) Some i0
+          | Some i -> Some (Oide_apply ( i, x ))
+          end
+    in
+    fun q ->
+      match f q with
+      | Some x -> x
+      | None -> q
+
+  let fsignature_item rec_ ppf ((k,path), res as si) =
+    let module M = Make(struct let simplif_path = path_simplifier k path end) in
+    match M.fsignature_item rec_ si with
+    | Some x -> !Xoprint.out_sig_item ppf x
+    | None ->
+        let print_ident = Xoprint.print_ident in
+        let out_type ppf = !Xoprint.out_type ppf *< M.simplif_type in
+        match res with
+        | FRecordField (Mutable, t) -> 
+            fprintf ppf "@[<2>field mutable %a :@ @[%a@]@]"
+              print_ident path
+              out_type t
+        | FRecordField (Immutable, t) -> 
+            fprintf ppf "@[<2>field %a :@ @[%a@]@]"
+              print_ident path
+              out_type t
+        | FVariantConstructor (t, _rto) ->
+            fprintf ppf "@[<2>constr %a :@ @[%a@]@]"
+              print_ident path
+              out_type t
+        | FMethod t ->
+            fprintf ppf "@[<2>method %a :@ @[%a@]@]"
+              print_ident path
+              out_type t
+        | _ -> assert false
+
+end
+
 let globalize tbl fsig =
   let rewrite = Rewrite.rewrite (Scan_ids.rewrite tbl) in
   let module G = Globalized.Make(struct let rewrite = rewrite end) in

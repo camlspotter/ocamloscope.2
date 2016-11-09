@@ -23,7 +23,7 @@ module Print : sig
   (** print [fsignature_item] in human friendly form *)
 
   module Make(A : sig
-    val path_simplifier : out_ident -> out_ident
+    val simplif_path : out_ident -> out_ident
   end) : sig
     val simplif_type    : out_type -> out_type
     val string_of_ident : out_ident -> string
