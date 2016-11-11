@@ -27,38 +27,53 @@ let query ngrok_mode data qs =
         All_but (split_by_space s)
     | _ -> Vanilla []
   in
-  let qstr, status, bs =
+  let qstr, status, bs, query_time, render_time =
     match assoc_opt "q" qs with
-    | None -> "", `Code 200, [ H.pcdata "Empty query" ]
+    | None -> "", `Code 200, [ H.pcdata "Empty query" ], None, None
 
     | Some [qstr] ->
         begin match Query.parse qstr with
-        | [], _ -> qstr, `Bad_request, [ H.pcdata "Query parse failure" ]
+        | [], _ -> qstr, `Bad_request, [ H.pcdata "Query parse failure" ], None, None
         | qs, warns ->
-            let warns = match warns with
-              | [] -> []
-              | _ ->
-                  [ H.div ~a: [H.a_class ["warning"]]
-                      & intersperse (H.br ())
-                      & map (fun s -> H.pcdata ("Warning: " ^ s)) warns
-                  ]
+            let res, query_time = time Exn.catch_ & fun () -> Query.query data pspec qs in
+            let (qstr, st, html), render_time = time (fun () ->
+              let warns = match warns with
+                | [] -> []
+                | _ ->
+                    [ H.div ~a: [H.a_class ["warning"]]
+                        & intersperse (H.br ())
+                        & map (fun s -> H.pcdata ("Warning: " ^ s)) warns
+                    ]
+              in
+              match res with  
+              | `Ok [] ->
+                  qstr, `OK, warns @ [ H.pcdata "Empty result" ]
+              | `Ok res ->
+                  qstr, `OK, warns @ [ Render.print_summary (Summary.group res) ]
+              | `Error (`Exn e) -> 
+                  let str =
+                    let trace = Exn.get_backtrace () in
+                    !% "Uncaught exception: %s\nBacktrace:\n%s\n" (Exn.to_string e) trace
+                  in
+                  qstr, `Internal_server_error, warns @ [ H.pcdata str ]) ()
             in
-            let res = Exn.catch_ & fun () -> Query.query data pspec qs in
-            match res with  
-            | `Ok [] ->
-                qstr, `OK, warns @ [ H.pcdata "Empty result" ]
-            | `Ok res ->
-                qstr, `OK, warns @ [ Render.print_summary (Summary.group res) ]
-            | `Error (`Exn e) -> 
-                let str =
-                  let trace = Exn.get_backtrace () in
-                  !% "Uncaught exception: %s\nBacktrace:\n%s\n" (Exn.to_string e) trace
-                in
-                qstr, `Internal_server_error, warns @ [ H.pcdata str ]
+            qstr, st, html, Some query_time, Some render_time
         end
-    | Some _ -> "", `Bad_request, [ H.pcdata "Illegal comma separated query" ]
+
+    | Some _ -> "", `Bad_request, [ H.pcdata "Illegal comma separated query" ], None, None
   in
 
+  let bs =
+    match query_time, render_time with
+    | None, None -> bs
+    | _ ->
+        let qt = query_time // 0.0 in
+        let rt = render_time // 0.0 in
+        [ H.span ~a: [ H.a_class ["time"] ]
+            [ H.pcdata (Printf.sprintf "%.2f %.2f" qt rt) ]
+        ; H.br () ]
+        @ bs
+  in
   if ngrok_mode then begin
     let headers = Cohttp.Header.of_list ["Content-type", "text/html"; "Access-Control-Allow-Origin", "*"] in
     Server.respond_string ~headers ~status ~body:(Render.html_elt_to_string (H.div bs)) ()
