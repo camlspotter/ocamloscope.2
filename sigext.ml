@@ -688,7 +688,7 @@ module Globalized = struct
       let string_of_ident x = sprintf "%a" Xoprint.print_ident x
       let string_of_type x = sprintf "%a" !Xoprint.out_type & simplif_type x 
   
-      let rec fmodule rec_ = function
+      let rec fmodule rec_ (* recursively prints internals *) = function
         | FSignature _ when not rec_ -> Omty_signature [Osig_ellipsis]
         | FSignature fs -> Omty_signature (fsignature rec_ fs)
         | FFunctor (id, fmo, fm') ->
@@ -703,10 +703,11 @@ module Globalized = struct
         | Trec_first -> Orec_first
         | Trec_next -> Orec_next
   
-      and ftypekind = function
+      and ftypekind rec_ = function
         | FAbstract -> Otyp_abstract
         | FOpen -> Otyp_open
-        | FRecord fs -> 
+
+        | FRecord fs when rec_ -> 
             Otyp_record (flip map fs & function
               | ((_,path), FRecordField (mf, Otyp_arrow ("", _, t))) ->
                   let n = match path with
@@ -716,8 +717,9 @@ module Globalized = struct
                   in
                   (n, mf = Mutable, simplif_type t)
               | _ -> assert false)
+        | FRecord _fs -> Otyp_stuff "{ ... }"
               
-        | FVariant fs -> 
+        | FVariant fs when rec_ -> 
             Otyp_sum (flip map fs & function
               | ((_,path), FVariantConstructor (Otyp_arrow ("", t, _), rto)) ->
                   let n = match path with
@@ -740,6 +742,8 @@ module Globalized = struct
               | _, f ->
                   !!% "%a@." (Ocaml.format_with [%derive.ocaml_of : Sig.res]) f;
                   assert false)
+        | FVariant _fs -> Otyp_stuff "| ..."
+            
   
       and fsignature_item rec_ ((_k,path), res) = match res with
         | FModule (fm, r) ->
@@ -756,7 +760,7 @@ module Globalized = struct
                     | Otyp_var (_, a) -> a, (true, true) (* TODO *)
                     | _ -> "?", (true, true)) tys
               ; otype_type = begin
-                let fty = ftypekind ftk in
+                let fty = ftypekind rec_ ftk in
                 simplif_type &
                 Option.fmap (fun t -> Otyp_manifest (t,fty)) tyo // fty
               end

@@ -249,8 +249,13 @@ let fsignature_item orgdoc (i : Data.DB.item) =
     | Some orgd, Some d when orgd = d -> []
     | _, Some d ->  [ H.div ~a: [H.a_class [ "docstring" ]] [ H.pcdata d ] ]
   in
-  H.div ~a: [ H.a_class [ "item" ] ] ( fsig :: doc )
-  (* @ [ H.pre [H.pcdata & Format.sprintf "@[%a@]" Hump.print_v (match i.v with Some v -> v | None -> Hump.LocNone) ]] *)
+  H.div ~a: [ H.a_class [ "item" ] ]
+    ( fsig
+      :: doc
+(*
+      @ [ H.pre [H.pcdata & Format.sprintf "@[%a@]" Hump.print_v (match i.v with Some v -> v | None -> Hump.LocNone) ]]
+*)
+    )
     
 let print_summary (sum : ( (Sig.k * Data.alias)
                            * int

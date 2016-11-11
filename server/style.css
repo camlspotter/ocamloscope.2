@@ -33,14 +33,24 @@ select#packtype {
     font-size: 110%;
 }
 
+div.warning {
+  padding-bottom: 5px;
+  font-size: 80%;
+  color: #884400;
+}
+
 div.group0 {
     background: #e8e8e8;
-    padding: 3px;
+    padding: 6px 3px 6px 3px;
+    border-style: solid none none none;
+    border-width: 1px 0px 0px 0px;
 }
 
 div.group1 {
     background: #f4f4f4;
-    padding: 3px;
+    padding: 6px 3px 6px 3px;
+    border-style: solid none none none;
+    border-width: 1px 0px 0px 0px;
 }
 
 div.original {
@@ -63,20 +73,21 @@ div.item {
 }
 
 div.docstring {
+    padding-top: 2px;
     font-size: 85%;
-    color:#442222;
+    color:#555555;
 }
 
 span.kind {
-    color:#440000;
+    color:#550000;
 }
 
 span.path {
-    color:#444400;
+    color:#555500;
 }
 
 span.type {
     padding-left: 1ex;
-    color:#004400;
+    color:#005500;
     display: inline-block;
 }
