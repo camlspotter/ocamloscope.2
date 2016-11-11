@@ -68,7 +68,11 @@ module Cache = struct
     let base = Filename.basename p in
     let d = Digest.file p in
     flip filter_map cmfiles & fun (p,dz) ->
-      if p#base = base && d = !!dz then Some p#path else None
+      (* Note: a care required for case insensitive filesystems *)
+      let normalize = String.lowercase_ascii in
+      if normalize p#base = normalize base && d = !!dz then
+        Some p#path
+      else None
   
   let reset_cache () =
     Hashtbl.clear cmfile_cache
