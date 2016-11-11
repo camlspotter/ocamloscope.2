@@ -33,7 +33,7 @@ let rec normalize_path p = match p with
   | Oide_dot (p,n) -> Oide_dot (normalize_path p, n)
 
 let rec get_alias = function
-  | Hump.Def { path=p } -> Some (Data.Path p)
+  | Hump.Def { kind; path=p } -> Some (Data.Path (kind, p))
   | Prim n           -> Some (Data.Primitive n)
   | Aliased (_, v)   -> get_alias v
   | Coerced (v, _)   -> get_alias v
@@ -49,7 +49,8 @@ let combine_sig_hump sigs (humps : Humpflat.ent list) =
     let alias =
       Option.bind vo & fun v -> 
         let a = get_alias v in
-        if a <> Some (Data.Path p) then a else None
+        (* remove self alias *)
+        if a <> Some (Data.Path (k,p)) then a else None
     in
     (k,p),(v,alias,vo)
 

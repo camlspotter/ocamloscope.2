@@ -31,9 +31,9 @@ end) = struct
                 Some (Digest.file fp) (* cached! *))
             cache f
   
-  let def path loc doc =
+  let def kind path loc doc =
     Hashcons.hump_v
-    & Def { path; loc; digest = loc_digest loc; doc }
+    & Def { kind; path; loc; digest = loc_digest loc; doc }
   
   let iname i = Hashcons.string i.Ident.name
   
@@ -599,9 +599,9 @@ end) = struct
     and pattern_desc c doc = function
       | Tpat_any -> []
       | Tpat_var (id, {loc}) ->
-          [(Sig.KValue, iname id), expr & EValue (def (o_dot c id) loc doc)]
+          [(Sig.KValue, iname id), expr & EValue (def Sig.KValue (o_dot c id) loc doc)]
       | Tpat_alias (p,id,{loc}) ->
-          ((KValue, iname id), expr & EValue (def (o_dot c id) loc doc))
+          ((KValue, iname id), expr & EValue (def KValue (o_dot c id) loc doc))
           :: pattern c p
       | Tpat_constant _ -> []
       | Tpat_tuple ps -> concat_map (pattern c) ps
@@ -756,7 +756,7 @@ end) = struct
       | Tcf_val _ -> []
       | Tcf_method (n, _private_flag, _class_field_kind) ->
           [(KMethod, n.txt),
-           expr & EMethod (def (Oide_dot (c, n.txt)) n.loc doc )]
+           expr & EMethod (def KMethod (Oide_dot (c, n.txt)) n.loc doc )]
       | Tcf_constraint (_cty, _cty') -> []
       | Tcf_initializer _ -> []
       | Tcf_attribute _ -> []
@@ -902,7 +902,7 @@ end) = struct
                 let e = f (map (fun v -> [v]) vs @ rev_vs) sis in
                 ELet (false, [(KModule, "*include*"), m],
                       fold_right (fun (k,n as id) e ->
-                        ELet (false, [id, EAddAlias(def (Oide_dot(c,snd id))
+                        ELet (false, [id, EAddAlias(def k (Oide_dot(c,snd id))
                                                       si.str_loc
                                                       doc,
                                                     EDot(expr & EVar(KModule, "*include*"), k, Hashcons.string n))], e))
@@ -951,7 +951,7 @@ end) = struct
       let doc = Doc.get mb.mb_attributes in
       let c' = o_dot c mb.mb_id in
       (KModule, iname mb.mb_id),
-      EModule (def c' mb.mb_name.loc doc, module_expr c' mb.mb_expr)
+      EModule (def KModule c' mb.mb_name.loc doc, module_expr c' mb.mb_expr)
   
   (*
   and module_binding =
@@ -970,7 +970,7 @@ end) = struct
       | Tpat_var (id, {loc}), Texp_ident (p, _, _) ->
           let doc = Doc.get vb.vb_pat.pat_attributes in
           [(Sig.KValue, iname id),
-           EAddAlias (def (o_dot c id) loc doc,
+           EAddAlias (def KValue (o_dot c id) loc doc,
                       path Sig.KValue p)]
       | _ -> pattern c vb.vb_pat
   
@@ -1103,7 +1103,7 @@ end) = struct
                 let e = f (map (fun v -> [v]) vs @ rev_vs) sis in
                 ELet (false, [(KModule, "*include*"), m],
                       fold_right (fun (k,n as id) e ->
-                        ELet (false, [id, EAddAlias(def (Oide_dot(c,snd id))
+                        ELet (false, [id, EAddAlias(def k (Oide_dot(c,snd id))
                                                       si.sig_loc
                                                       doc,
                                                     EDot (expr & EVar (KModule, "*include*"), k, Hashcons.string n))], e))
@@ -1148,7 +1148,7 @@ end) = struct
     and module_declaration c md =
       let doc = Doc.get md.md_attributes in
       ((KModule, iname md.md_id),
-       EModule (def (o_dot c md.md_id) md.md_name.loc doc,
+       EModule (def KModule (o_dot c md.md_id) md.md_name.loc doc,
                 module_type c md.md_type))
   
   (*
@@ -1165,7 +1165,7 @@ end) = struct
       let doc = Doc.get mtd.mtd_attributes in
       let c' = o_dot c mtd.mtd_id in
       (KModtype, iname mtd.mtd_id),
-      EModtype (def c' mtd.mtd_name.loc doc, Option.fmap (module_type c') mtd.mtd_type)
+      EModtype (def KModtype c' mtd.mtd_name.loc doc, Option.fmap (module_type c') mtd.mtd_type)
   
   (*
   and module_type_declaration =
@@ -1258,11 +1258,11 @@ end) = struct
       match vd.val_val.val_kind with
       | Val_prim { Primitive.prim_name } when prim_name.[0] = '%' ->
           (KValue, iname vd.val_id), 
-        expr & EValue (Aliased (def (o_dot c vd.val_id) vd.val_name.loc doc,
+        expr & EValue (Aliased (def KValue (o_dot c vd.val_id) vd.val_name.loc doc,
                                 Prim prim_name))
       | _ -> 
           (KValue, iname vd.val_id),
-          expr & EValue (def (o_dot c vd.val_id) vd.val_name.loc doc)
+          expr & EValue (def KValue (o_dot c vd.val_id) vd.val_name.loc doc)
   
   (*
   and value_description =
@@ -1280,7 +1280,7 @@ end) = struct
       let doc = Doc.get td.typ_attributes in
       let stk = type_kind c td.typ_kind in
       (KType, iname td.typ_id),
-      expr & EType (def (o_dot c td.typ_id) td.typ_name.loc doc, stk)
+      expr & EType (def KType (o_dot c td.typ_id) td.typ_name.loc doc, stk)
   
   (*
   and type_declaration =
@@ -1316,7 +1316,7 @@ end) = struct
     and label_declaration c ld =
       let doc = Doc.get ld.ld_attributes in
       (KField, iname ld.ld_id),
-      expr & EField (def (o_dot c ld.ld_id) ld.ld_name.loc doc)
+      expr & EField (def KField (o_dot c ld.ld_id) ld.ld_name.loc doc)
   
   (*
   and label_declaration =
@@ -1333,7 +1333,7 @@ end) = struct
     and constructor_declaration c cd =
       let doc = Doc.get cd.cd_attributes in
       (KConstructor, iname cd.cd_id),
-      expr & EConstructor (def (o_dot c cd.cd_id) cd.cd_name.loc doc)
+      expr & EConstructor (def KConstructor (o_dot c cd.cd_id) cd.cd_name.loc doc)
   
   (*
   and constructor_declaration =
@@ -1368,7 +1368,7 @@ end) = struct
     and extension_constructor c ec =
       let doc = Doc.get ec.ext_attributes in
       (KTypext, iname ec.ext_id),
-      expr & ETypext (def (o_dot c ec.ext_id) ec.ext_name.loc doc)
+      expr & ETypext (def KTypext (o_dot c ec.ext_id) ec.ext_name.loc doc)
   
   (*
   and extension_constructor =
@@ -1441,7 +1441,7 @@ end) = struct
       | Tctf_val _ -> []
       | Tctf_method (n, _, _, _) -> (* (string * private_flag * virtual_flag * core_type) *)
           [(KMethod, n),
-           expr & EMethod (def (Oide_dot (c, n)) loc doc)]
+           expr & EMethod (def KMethod (Oide_dot (c, n)) loc doc)]
       | Tctf_constraint _ -> [] (* (core_type * core_type) *)
       | Tctf_attribute _ -> []
           
@@ -1457,14 +1457,16 @@ end) = struct
       let doc = Doc.get ci.ci_attributes in
       let c' = Oide_dot (c, ci.ci_id_name.txt) in
       let meths = class_expr c' ci.ci_expr in (* XXX not sure at all!. XXX default case is wrong! *)
+      let v k = def k c' ci.ci_id_name.loc doc in
+      let vc = v KClass in
       [ (KClass, ci.ci_id_name.txt),
-        expr & EClass (def c' ci.ci_id_name.loc doc, meths)
+        expr & EClass (vc, meths)
       ; (KClasstype, ci.ci_id_name.txt),
-        expr & EClasstype (def c' ci.ci_id_name.loc doc, meths)
+        EAddAlias (v KClasstype, expr & EClasstype (vc, meths))
       ; (KType, ci.ci_id_name.txt),
-        expr & EType (def c' ci.ci_id_name.loc doc, [])
+        EAddAlias (v KType, expr & EType (vc, []))
       ; (KType, "#" ^ ci.ci_id_name.txt),
-        expr & EType (def c' ci.ci_id_name.loc doc, [])
+        EAddAlias (v KType, expr & EType (vc, []))
       ]
   
   (*      
@@ -1476,15 +1478,16 @@ end) = struct
       let doc = Doc.get ci.ci_attributes in
       let c' = Oide_dot (c, ci.ci_id_name.txt) in
       let meths = class_type c' ci.ci_expr in (* XXX not sure at all!. XXX default case is wrong! *)
-      let v = def c' ci.ci_id_name.loc doc in
+      let v k = def k c' ci.ci_id_name.loc doc in
+      let vc = v KClass in
       [ (KClass, ci.ci_id_name.txt),
-        expr & EClass (v, meths)
+        expr & EClass (vc, meths)
       ; (KClasstype, ci.ci_id_name.txt),
-        EAddAlias (v, expr & EClasstype (v, meths))
+        EAddAlias (v KClasstype, expr & EClasstype (vc, meths))
       ; (KType, ci.ci_id_name.txt),
-        EAddAlias (v, expr & EType (v, []))
+        EAddAlias (v KType, expr & EType (vc, []))
       ; (KType, "#" ^ ci.ci_id_name.txt),
-        EAddAlias (v, expr & EType (v, []))
+        EAddAlias (v KType, expr & EType (vc, []))
       ]
       
   (*
@@ -1496,13 +1499,14 @@ end) = struct
       let doc = Doc.get ci.ci_attributes in
       let c' = Oide_dot (c, ci.ci_id_name.txt) in
       let meths = class_type c' ci.ci_expr in (* XXX not sure at all!. XXX default case is wrong! *)
-      let v = def c' ci.ci_id_name.loc doc in
+      let v k = def k c' ci.ci_id_name.loc doc in
+      let vc = v KClasstype in
       [ (KClasstype, ci.ci_id_name.txt),
-        expr & EClasstype (v, meths)
+        expr & EClasstype (vc, meths)
       ; (KType, ci.ci_id_name.txt),
-        EAddAlias (v, expr & EType (def c' ci.ci_id_name.loc doc, []))
+        EAddAlias (v KType, expr & EType (vc, []))
       ; (KType, "#" ^ ci.ci_id_name.txt),
-        EAddAlias (v, expr & EType (def c' ci.ci_id_name.loc doc, []))
+        EAddAlias (v KType, expr & EType (vc, []))
       ]
   
   (*

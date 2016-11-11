@@ -44,7 +44,7 @@ module HumpFile = struct
     with_ic (open_in_bin p) & fun ic -> Marshal.from_channel ic
 end
   
-type alias = Path of out_ident | Primitive of string
+type alias = Path of k * out_ident | Primitive of string
   [@@deriving conv{ocaml_of}, typerep]
 
 module Dat = struct
