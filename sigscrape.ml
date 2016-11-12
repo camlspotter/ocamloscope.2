@@ -11,8 +11,9 @@ let scrape_cmi x =
   in
   (* !!% "@[<2>%s:@ source: @[%a@]@]@.@." x Zpack.format src; *)
   (* XXX need to fix the following! *)
+  let notop = Path.Pident (Ident.create_persistent "NOTOP") in
   let top = match src.Cm.paths with
-    | [] -> assert false
+    | [] -> notop
     | [ Oide_dot(Oide_ident p,s) ] -> Path.(Pdot (Pident (Ident.create_persistent p), s, 0))
     | _::_::_ -> assert false
     | _ -> assert false
