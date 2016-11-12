@@ -33,6 +33,12 @@ select#packtype {
     font-size: 110%;
 }
 
+div.time {
+    padding-bottom: 5px;
+    font-size: 75%;
+    color: #888888;
+}
+
 div.warning {
   padding-bottom: 5px;
   font-size: 80%;

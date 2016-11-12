@@ -69,10 +69,9 @@ let query ngrok_mode data qs =
     | _ ->
         let qt = query_time // 0.0 in
         let rt = render_time // 0.0 in
-        [ H.span ~a: [ H.a_class ["time"] ]
-            [ H.pcdata (Printf.sprintf "%.2f %.2f" qt rt) ]
-        ; H.br () ]
-        @ bs
+        H.div ~a: [ H.a_class ["time"] ]
+          [ H.pcdata (Printf.sprintf "(Query: %.2fsecs Render:%.2fsecs)" qt rt) ]
+        :: bs
   in
   if ngrok_mode then begin
     let headers = Cohttp.Header.of_list ["Content-type", "text/html"; "Access-Control-Allow-Origin", "*"] in
