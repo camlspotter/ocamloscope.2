@@ -68,7 +68,7 @@ let fsignature_item orgdoc (i : Data.DB.item) =
   let open Data.DB in
   let open Sig in
   let open Outcometree in
-  let module M = Sigext.Print.Make(struct let path_simplifier = Sigext.Print.path_simplifier i.kind i.path end) in
+  let module M = Sigext.Print.Make(struct let simplif_path = Sigext.Print.path_simplifier i.kind i.path end) in
 
   let string_of_type ty = Format.sprintf "%a" !Xoprint.out_type (M.simplif_type ty) in
   let htype ty = spans ~a:[H.a_class ["type"]] & string_of_type ty in
