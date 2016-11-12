@@ -39,19 +39,11 @@ val query
   -> t list 
   -> (int (*+ distance *)
       * ( DB.item
-          * ([> `Apply of 'c * [> `No ]
-             | `Dot of 'c * string
-             | `Ident of string
-             | `No ] as 'c) option 
+          * Sigmatch.PathLimit.desc option 
           * ([> `Arrow of 'd * 'd list
              | `Constr of
                  [> `None
-                 | `Path of
-                     [> `Apply of 'e * [> `No ]
-                     | `Dot of 'e * string
-                     | `Ident of string
-                     | `No ]
-                       as 'e ] *
+                 | `Path of Sigmatch.PathLimit.desc ] *
                    'd list
              | `None
              | `Tuple of 'd list

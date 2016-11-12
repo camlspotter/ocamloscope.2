@@ -7,11 +7,25 @@ let fail = None
 
 module PathLimit = struct
 
+  type desc =
+    | Apply of desc
+    | Dot of desc * string
+    | Ident of string
+    | IdentMod of string
+    | ModIdent of string
+    | No
+        
   let decr ?(by=1) score =
     let score = score - by in
     if score < 0 then None
     else Some score
 
+  let max t1 t2 = match t1, t2 with
+    | None, None -> None
+    | None, _ -> t2
+    | _, None -> t1
+    | Some (s1, _), Some (s2, _) ->
+        if s1 >= s2 then t1 else t2
 end
 
 module TypeLimit = struct
@@ -54,7 +68,7 @@ end) = struct
     | "", _ | _, "" -> false
     | _ ->
         let case s = match String.unsafe_get s 0 with
-          | 'a'..'z' -> 0
+          | 'a'..'z' | '#' (* #class *) -> 0
           | 'A'..'Z' -> 1
           | _ -> 2
         in
@@ -135,35 +149,64 @@ end) = struct
   let no_match_ident = Oide_ident ""
 *)
 
+  let is_one_lowercase s =
+    String.length s = 1 
+    && match String.unsafe_get s 0 with
+       | 'a'..'z' -> true
+       | _ -> false
+
   let rec match_path pat p limit : (int * _) option =
+    let open PathLimit in
     match pat, p with
     | Oide_dot(n1, "_*_"), Oide_dot(m1, _m2) -> do_;
         (limit, d1) <-- max (match_path n1 m1 limit) (match_path pat m1 limit);
-        return (limit, `Dot(d1, "_*_"))
+        return (limit, Dot(d1, "_*_"))
     | Oide_ident n,   Oide_ident p when Some ps <-- Packpath.parse p -> do_;
         (* This is inefficient! *)
         limit <-- match_package n ps limit; 
-        return (limit, `Ident n)
-    | Oide_ident n,   Oide_dot(_m1, m2) -> do_;
-        limit <-- match_name n m2 limit;
-        return (limit, `Dot (`No, n))
+        return (limit, Ident n)
+
+    | Oide_ident n, Oide_dot(m1, m2) ->
+        let a1 = do_;
+          limit <-- match_name n m2 limit;
+          return (limit, Dot (No, n))
+        in
+
+        (* array matches with Array.t *)
+        let a2 =
+          if is_one_lowercase m2 then
+            match m1 with
+            | Oide_ident m | Oide_dot (_, m) -> do_;
+                limit <-- match_name n (String.lowercase_ascii m) limit;
+                return (limit, IdentMod n)
+            | _ -> None
+          else
+            None
+        in
+        PathLimit.max a1 a2
+
+    | Oide_dot ((Oide_dot (_,n1) | Oide_ident n1), n2), Oide_ident m when is_one_lowercase n2 -> do_;
+        (* Array.t matches with array *)
+        limit <-- match_name (String.lowercase_ascii n1) m limit;
+        return (limit, ModIdent n1)
+          
     | Oide_ident n,   Oide_ident m -> do_;
         limit <-- match_name n m limit;
-        return (limit, `Ident n)
+        return (limit, Ident n)
     | Oide_dot(n1, n2), Oide_dot(m1, m2) -> do_;
         limit <-- match_name n2 m2 limit;
         (limit,d) <-- match_path n1 m1 limit;
-        return (limit, `Dot (d, n2))
+        return (limit, Dot (d, n2))
     | Oide_apply (li1, _li2), Oide_apply (p1, _p2) -> do_;
         (* A(B) matches with A(C) *)
         (* CR jfuruse: li2 is given but never used... *)
         (limit, d) <-- match_path li1 p1 limit;
-        return (limit, `Apply(d, `No))
+        return (limit, Apply d)
     | li, Oide_apply (p1, _p2) -> do_;
         (* A matches with A(C) but with slight penalty *)
         x <-- PathLimit.decr limit;
         (limit, d) <-- match_path li p1 x;
-        return (limit, `Apply(d, `No))
+        return (limit, Apply d)
     | _ -> fail
 
   let dummy_pattern_type_var = Otyp_stuff "any"

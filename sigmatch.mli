@@ -2,6 +2,18 @@
 
 open Outcometree
 
+module PathLimit : sig
+
+  type desc =
+    | Apply of desc
+    | Dot of desc * string
+    | Ident of string
+    | IdentMod of string
+    | ModIdent of string
+    | No
+
+end
+  
 module Make(A : sig 
   val cache : Levenshtein.StringWithHashtbl.cache 
 end) : sig
@@ -20,18 +32,10 @@ end) : sig
     int ->
     int ->
     (int 
-     * (([> `Apply of 'a * [> `No ]
-         | `Dot of 'a * string
-         | `Ident of string
-         | `No ] as 'a)
+     * (PathLimit.desc
         * ([> `Arrow of 'b * 'b list
            | `Constr of [> `None
-                        | `Path of
-                            [> `Apply of 'c * [> `No ]
-                            | `Dot of 'c * string
-                            | `Ident of string
-                            | `No ]
-                              as 'c ] * 'b list
+                        | `Path of PathLimit.desc ] * 'b list
            | `None
            | `Tuple of 'b list
            | `Var of out_type ]
@@ -47,12 +51,7 @@ end) : sig
      * ([> `Arrow of 'a * 'a list
         | `Constr of
             [> `None
-            | `Path of
-                [> `Apply of 'b * [> `No ]
-                | `Dot of 'b * string
-                | `Ident of string
-                | `No ]
-                  as 'b ] * 'a list
+            | `Path of PathLimit.desc ] * 'a list
         | `None
         | `Tuple of 'a list
         | `Var of out_type ]
@@ -64,10 +63,6 @@ end) : sig
     out_ident ->
     int ->
     (int 
-     * ([> `Apply of 'a * [> `No ]
-        | `Dot of 'a * string
-        | `Ident of string
-        | `No ]
-           as 'a)
+     * PathLimit.desc
     ) option
 end
