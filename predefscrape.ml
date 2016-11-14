@@ -12,7 +12,8 @@ let sig_of_predefs =
     | Env_class (_ , _, _)
     | Env_cltype (_ , _, _)
     | Env_open (_ , _)
-    | Env_functor_arg (_ , _) -> assert false
+    | Env_functor_arg (_ , _) 
+    | Env_constraints _ -> assert false
   in
   scan & Env.summary & Env.initial_unsafe_string
 

@@ -441,9 +441,9 @@ end) = struct
             (* Dumpsource.dump_it (); *)
           end;
           expr & EUnknownPath (Hashcons.out_ident & Printtyp.tree_of_path p)
-      | Mty_alias p ->
+      | Mty_alias (_ap, p) -> (* XXX understand alias_presence *)
           if add_if_not_mem p warned_scrape_failures = `NewlyAdded then begin
-            !!% "Warning: scraping failure of Mty_alias: %s@." (Path.string_of p);
+            !!% "Warning: scraping failure of Mty_alias (_, %s)@." (Path.string_of p);
             (* Dumpsource.dump_it (); *)
           end;
           expr & EUnknownPath (Printtyp.tree_of_path p)
@@ -468,7 +468,7 @@ end) = struct
         Mty_ident of Path.t
       | Mty_signature of signature
       | Mty_functor of Ident.t * module_type option * module_type
-      | Mty_alias of Path.t
+      | Mty_alias of alias_presence * Path.t
   
     *)
   

@@ -346,7 +346,7 @@ module Scrape = struct
         | _ -> ()
         end;
         SUNKNOWN_ident p
-    | Mty_alias p ->
+    | Mty_alias (_ap, p) -> (* XXX need to learn about alias_presence *)
         begin match add_if_not_mem p warned_scrape_failures with
         | `NewlyAdded ->
             !!% "Warning: scraping failure of Mty_alias: %s@." (Path.string_of p);
@@ -886,6 +886,7 @@ module Print = struct
             ; otype_private = pf 
             ; otype_immediate = false (* TODO *)
             ; otype_cstrs = [] (* TODO constraints *)
+            ; otype_unboxed = false; (* XXX we bravely ignore unboxed flag *)
             }
           in
           Some (Osig_type (otd, rec_status r))
