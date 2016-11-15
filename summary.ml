@@ -106,7 +106,7 @@ let format_alias ppf = function
         Xoprint.print_ident p (*XXX fsig.  The value may be hidden by signature *)
   | Primitive n -> Format.fprintf ppf "primitive %s" n
 
-let final_print ppf (g : (alias * int * (int * DB.item * 'trace1 * 'trace2) list list) list)  = flip iter g & fun (a, d, (xss : (int * DB.item * 'trace1 * 'trace2) list list) ) ->
+let final_print show_v ppf (g : (alias * int * (int * DB.item * 'trace1 * 'trace2) list list) list)  = flip iter g & fun (a, d, (xss : (int * DB.item * 'trace1 * 'trace2) list list) ) ->
   let nonaliased, aliased = partition (fun i -> i.alias = None) & map (fun (_,i,_,_) -> i) & flatten xss in
   let (!!%) fmt = Format.fprintf ppf fmt in
   let fsig i = Data.DB.fsignature_item i in
@@ -125,8 +125,8 @@ let final_print ppf (g : (alias * int * (int * DB.item * 'trace1 * 'trace2) list
           (Sigext.Print.fsignature_item false) fsig
           doc
     end;
-    (* XXX need switch *)
-    Format.fprintf ppf "@[%a@]@." (Option.format Hump.print_v) x.DB.v
+    if show_v then 
+      Format.fprintf ppf "@[%a@]@." (Option.format Hump.print_v) x.DB.v
   in
   match nonaliased with
   | [] ->
@@ -146,4 +146,4 @@ let final_print ppf (g : (alias * int * (int * DB.item * 'trace1 * 'trace2) list
             (Format.list "@ " format_item) nonaliased
             (Format.list "@ " format_item) aliased
             
-let group_and_print ppf = final_print ppf *< group
+let group_and_print show_v ppf = final_print show_v ppf *< group

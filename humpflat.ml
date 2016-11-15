@@ -107,7 +107,7 @@ let global_source_of_cached_hump_loader ~loader p =
         (* XXX warn? *)
         None
     | Oide_ident "predef" -> Some "predef" (* XXX correct? *)
-    | Oide_ident s when s.[0] = '{' ->
+    | Oide_ident s when is_package_path_name s ->
         begin match Packpath.parse s with
         | None -> assert false
         | Some [] -> assert false

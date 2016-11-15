@@ -198,3 +198,7 @@ let top_package_name x =
   match String.index x '.' with
   | exception _ -> x
   | n -> String.sub x 0 n
+
+let is_package_path_name = function
+  | "" -> false
+  | s -> String.unsafe_get s 0 = '{'

@@ -2,6 +2,7 @@ open Spotlib.Spot
 open List
 
 let rec search db pspec =
+  let show_v = false in (* XXX must be configurable via directive *)
   Format.printf "Packs: %a@." (Ocaml.format_with Query.PackageSpec.ocaml_of_t) pspec;
   print_string "? ";
   let s = read_line () in
@@ -25,7 +26,7 @@ let rec search db pspec =
             flip iter res (fun (d,si) -> !!% "%d : %a@." d (Sigext.Print.sig_item true) si);
           *)
           
-            Summary.group_and_print Format.stderr res;
+            Summary.group_and_print show_v Format.stderr res;
           
             !!% "That's all@.";
         end;

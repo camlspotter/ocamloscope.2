@@ -12,7 +12,8 @@ val group
 (** Group the search results *)
 
 val group_and_print
-  : Format.t
+  : bool (*+ show alias info or not *)
+  -> Format.t
   -> (int * (DB.item * 'trace1 * 'trace2) list) list
   -> unit
 (** Print out search results *)

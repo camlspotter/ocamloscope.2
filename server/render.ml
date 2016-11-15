@@ -177,7 +177,7 @@ let fsignature_item orgdoc (i : Data.DB.item) =
                | [] -> [ spans " : "; htype rty ]
                | _ -> [ spans " : "; htype (Otyp_arrow ("", Otyp_tuple args, rty)) ]
                end)
-    | FClass (tys, _fs, t, _p, (vf, _r)) -> 
+    | FClass (tys, _fs, _t, _p, (vf, _r)) -> 
   (*
         let clt = 
           let rec f = function
@@ -205,9 +205,10 @@ let fsignature_item orgdoc (i : Data.DB.item) =
         :: (if vf = Virtual then [ spans "virtual" ] else [])
         @ htyparams ~cls:true tys
         @ [hp] (* XXX how abstract class is encoded?? *)
-        @ [ spans " : "; htype t ]
+        (* @ [ spans " : "; htype t ] *)
+        @ [ spans " : object ... end" ]
   
-    | FClassType (pars, _fs, t, _p, (vf, _r)) ->
+    | FClassType (pars, _fs, _t, _p, (vf, _r)) ->
   (*
         let clt = 
           let rec f = function
@@ -235,7 +236,8 @@ let fsignature_item orgdoc (i : Data.DB.item) =
         :: (if vf = Virtual then [ spans "virtual" ] else [])
         @ htyparams ~cls:true pars
         @ [hp] (* XXX how abstract class is encoded?? *)
-        @ [ spans " = "; htype t ]
+        (* @ [ spans " = "; htype t ] *)
+        @ [ spans " = object ... end" ]
   
     | FMethod ty -> [ hk; hp; spans " : "; htype ty ]
     | FTypextRaw _

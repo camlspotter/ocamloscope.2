@@ -578,8 +578,8 @@ module Scan_ids = struct
       match Hashtbl.find_opt tbl id with
       | None -> Hashtbl.add tbl id p
       | Some p' ->
-          !!% "Warning double binding of %s (%s and %s)@."
-            id.Ident.name
+          !!% "Warning: double binding of %s (%s and %s)@."
+            (Ident.string_of ~stamp:true id)
             (Path.string_of p)
             (Path.string_of p')
         
@@ -983,15 +983,7 @@ module Print = struct
                                  rec_status r))
   end
 
-  let path_simplifier k p =
-    let rec get_package = function
-      | Oide_ident s when s.[0] = '{' -> Some s
-      | Oide_ident _ -> None
-      | Oide_dot( i, _ ) -> get_package i
-      | Oide_apply( i, _ ) -> get_package i
-    in
-    let package = get_package p in
-
+  let path_simplifier k (* context kind *) p (* context path *) =
     (* Prefix requires special handling for methods, since
        they have paths like M.N.O.classname.methodname
     *)
@@ -1002,7 +994,7 @@ module Print = struct
     in
     let rec f = function
       | p when Some p = prefix -> None
-      | Oide_ident s when Some s = package -> None
+      | Oide_ident s when is_package_path_name s -> None
       | Oide_ident _ as i -> Some i
       | Oide_dot( i, x ) ->
           begin match f i with

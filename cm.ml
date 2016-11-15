@@ -176,7 +176,7 @@ let traverse_package srcdir apg ap =
   f [] (map (fun cmi -> Oide_ident (Packpath.make [ap]), cmi) cmis)
 
 let rec split_head = function
-  | Oide_dot (Oide_ident s, n) when s.[0] = '{' -> s, Oide_ident n
+  | Oide_dot (Oide_ident s, n) when is_package_path_name s -> s, Oide_ident n
   | Oide_dot (p, n) ->
       let s, p = split_head p in
       s, Oide_dot (p, n)

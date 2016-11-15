@@ -100,3 +100,7 @@ val top_package_name : string -> string
 (** "some.package" => "some"
     "other" => "other"
 *)
+
+val is_package_path_name : string -> bool
+(** Return [true] if the string starts with ['{'] *)
+
