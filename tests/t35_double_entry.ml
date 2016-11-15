@@ -1,7 +1,20 @@
-let xyz = 1
+module K = struct
+  type s
+end
 
-let xyz = "hello"
+module M1 = struct
+  type t = Bar of K.s
+end
 
-type t = Foo
+module M2 : module type of M1 = struct
+  type t = Bar of K.s
+end
 
-type u = t = Foo
+
+module Temporal = struct
+  module Datetime = struct
+    type t = { x : int }
+  end
+end
+
+module DatetimeCopy = Temporal.Datetime
