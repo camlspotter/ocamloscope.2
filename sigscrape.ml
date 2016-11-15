@@ -13,7 +13,7 @@ let scrape_cmi x =
   (* XXX need to fix the following! *)
   let notop = Path.Pident (Ident.create_persistent "NOTOP") in
   let top = match src.Cm.paths with
-    | [] -> notop
+    | [] -> Path.Pdot (notop, module_name x, 0)
     | [ Oide_dot(Oide_ident p,s) ] -> Path.(Pdot (Pident (Ident.create_persistent p), s, 0))
     | _::_::_ -> assert false
     | _ -> assert false
