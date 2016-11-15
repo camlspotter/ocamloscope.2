@@ -1,6 +1,8 @@
 open Spotlib.Spot
 open Cohttp_lwt_unix
 
+(* XXX I can use Cohttp_lwt_unix.respond_file! *)
+
 let if_modified_since h =
   let f s =
     (* prerr_endline ("< " ^ s); *)
@@ -60,5 +62,4 @@ let respond_file_in_memory p ctype h =
       let s, mt = file () in
       if mt <= ims then None
       else Some (s, mt)
-
 
