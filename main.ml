@@ -50,6 +50,7 @@ module Test = struct
   let summary = "Scrape given files then print"
 
   let exec () =
+    Cm.test_mode := true; (* make Cm.guess not loading things on the fly *)
     Humpext.test := true; (* XXX bad code *)
     Arg.parse []
       (fun x -> rev_anon_args +::= x)

@@ -6,6 +6,8 @@ open Outcometree
 
 (* cm files *)
 
+let test_mode = ref false
+
 type t = {
   paths      : Hump.path list; (** one cm file may be accessible in more than one way. The best path comes at the head *)
   digest     : Digest.t; (** digest of cmi *)
@@ -272,9 +274,30 @@ let package_stamp ts =
   fst & uniq_dup_sorted compare & sort compare & map (fun t -> t.digest) ts
 
 let warned_traverses = ref []
-    
+
+(* the last resort *)
+let default p =
+  let cmi = Filename.change_extension ~ext:".cmi" p in
+  if not & File.Test._f cmi then failwithf "cmi file %s is not found" cmi;
+  let d_cmi = Digest.file cmi in
+  let find ext p =
+    let p = Filename.change_extension ~ext p in
+    if File.Test._f p then Some p else None
+  in
+  [ { paths = [];
+      digest = d_cmi;
+      cmi = cmi;
+      cmt = find ".cmt" p;
+      cmti = find ".cmti" p;
+      ocamlfinds = [];
+      opam = None
+    }
+  ]
+  
 (* XXX this triggers big scanning of packages, even in the test mode *)
 let guess p =
+  if !test_mode then default p else
+    
   let m = module_name p in
   let cmi = Filename.change_extension ~ext:".cmi" p in
   if not & File.Test._f cmi then failwithf "cmi file %s is not found" cmi;
@@ -284,26 +307,13 @@ let guess p =
       let ts = traverse_packages apg in
       filter (fun t -> m = module_name t.cmi && t.digest = d_cmi) ts
   in
-  let default () =
+  let maybe_out_of_opam () =
     match Hashtbl.find_all !!out_of_opam_cmi_table (String.uncapitalize_ascii & Filename.basename cmi, d_cmi) with
-    | [] ->
-        let find ext p =
-          let p = Filename.change_extension ~ext p in
-          if File.Test._f p then Some p else None
-        in
-        [ { paths = [];
-            digest = d_cmi;
-            cmi = cmi;
-            cmt = find ".cmt" p;
-            cmti = find ".cmti" p;
-            ocamlfinds = [];
-            opam = None
-          }
-        ]
+    | [] -> default p
     | xs -> xs
   in
   match Opam.package_dir_of !!Package.sw p with
-  | None -> default ()
+  | None -> maybe_out_of_opam ()
   | Some (`OPAMBuild []) -> assert false
   | Some (`OPAMBuild (n::_)) -> 
       begin match
@@ -312,15 +322,15 @@ let guess p =
       | [] ->
           (* .opam/<sw>/name.ver, but name.ver is not known to OPAM *)
           !!% "Warning: No opam package for %s" n;
-          default ()
+          default p
       | (_::_::_ as opams) -> 
           !!% "Warning: More than one opam packages for %s (%a)" n Format.(list "@ " string) (map (fun opam -> opam.Opam.Package.name) opams);
-          default ()
+          default p
       | [opam] ->
           match assoc_opt opam !!Package.ocamlfinds_of_opam with
           | None ->
               !!% "Warning: No OCamlFind packages for OPAM %s" opam.Opam.Package.name;
-              default ()
+              default p
           | Some [] ->
               !!% "Warning opam build %s has no ocamlfind package groups@." n;
               []
