@@ -202,3 +202,12 @@ let top_package_name x =
 let is_package_path_name = function
   | "" -> false
   | s -> String.unsafe_get s 0 = '{'
+
+let out_ident_of_path =
+  let open Outcometree in
+  let rec f = function
+    | Path.Pident id -> Oide_ident (Ident.name id)
+    | Pdot (p, s, _) -> Oide_dot (f p, s)
+    | _ -> assert false
+  in
+  f

@@ -13,7 +13,7 @@ let ocaml_of_location = Location.ocaml_of_t
 
 (* human friendly printing *)
 let ocaml_of_path =
-  let module M = Xprinttyp.Make(struct let rewrite = id end) in
+  let module M = Xprinttyp.Make(struct let rewrite = out_ident_of_path end) in
   fun oi -> Ocaml.String (M.string_of_out_ident oi)
 
 let string_of_path x =

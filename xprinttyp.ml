@@ -15,7 +15,7 @@
 
 [@@@ocaml.warning "-27-32"]
 
-module Make(A : sig val rewrite : Path.t -> Path.t end) = struct
+module Make(A : sig val rewrite : Path.t -> Outcometree.out_ident end) = struct
 
 (* Printing functions *)
 
@@ -57,7 +57,7 @@ let rec tree_of_path = function
   | Papply(p1, p2) ->
       Oide_apply (tree_of_path p1, tree_of_path p2)
 
-let tree_of_path p = tree_of_path @@ A.rewrite p
+let tree_of_path p = A.rewrite p
 
 let rec path ppf = function
   | Pident id ->

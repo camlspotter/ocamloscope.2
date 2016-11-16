@@ -212,7 +212,7 @@ let query {DB.items= fs_t_list; top_types= ts} pspec qs0 =
     | Some x -> Some (dbitem, x)
   in
 
-  let module P = Xprinttyp.Make(struct let rewrite = id end) in
+  let module P = Xprinttyp.Make(struct let rewrite = Utils.out_ident_of_path end) in
   
   let dthresh = Distthresh.create ~thresh:5 ~limit:100 in
   let dthresh = flip2 fold_left dthresh fs_t_list & fun dthresh dbitem ->

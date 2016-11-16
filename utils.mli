@@ -104,3 +104,4 @@ val top_package_name : string -> string
 val is_package_path_name : string -> bool
 (** Return [true] if the string starts with ['{'] *)
 
+val out_ident_of_path : Path.t -> Outcometree.out_ident
