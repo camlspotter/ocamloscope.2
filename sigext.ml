@@ -31,7 +31,7 @@ module Scrape = struct
       | KModule    
       | KModtype
       | KClass
-      | KClassType
+      | KClasstype
     [@@deriving conv{ocaml_of}]
   
   type res = 
@@ -110,7 +110,7 @@ module Scrape = struct
     | Sig_class (id, cd, rec_status) ->
         (KClass, id), class_declaration cd rec_status
     | Sig_class_type (id, ctd, rec_status) ->
-        (KClassType, id), class_type_declaration ctd rec_status
+        (KClasstype, id), class_type_declaration ctd rec_status
         
   and value_description vd = SValue (vd.val_type, value_kind vd.val_kind)
   
@@ -441,7 +441,308 @@ module Scrape = struct
     warned_scrape_failures := []; 
     signature sg
 end
+
+module Simplify = struct
+
+  include Sig.Flatten(struct
+    type type_expr = Types.type_expr
+    let ocaml_of_type_expr = ocaml_of_type_expr
+    type path = Path.t
+    let ocaml_of_path = Path.ocaml_of_t
+    type ident = Ident.t
+    let ocaml_of_ident = Ident.ocaml_of_t
+  end)
+    
+  open Scrape
+  open Path
+
+  let rec stypekind dty = function
+    | SAbstract -> FAbstract
+    | SOpen -> FOpen
+    | SRecord fields ->
+        FRecord (flip map fields & fun (id, mf, ty) ->
+          (Sig.KField, Pident id),
+          FRecordField(
+            mf,
+            Btype.newgenty (Tarrow (Nolabel, dty, ty, Cok))))
+    | SVariant cs ->
+        FVariant (flip map cs & fun (id, scas, tyo) ->
+          let ty = tyo // dty in
+          (KConstructor, Pident id),
+          FVariantConstructorRaw(
+            sconstructor_arguments scas,
+            ty,
+            tyo))
+
+  and sconstructor_arguments = function
+    | SCRecord id_mf_ty_list -> FCRecord id_mf_ty_list
+    | SCTuple tys -> FCTuple tys
+          
+  and smodule = function
+    | SSignature ssg -> FSignature (ssignature ssg)
+    | SFunctor (id, smo, sm) ->
+        let fm = smodule sm in
+        FFunctor (id, Option.fmap smodule smo, fm)
+    | SUNKNOWN_ident p -> FUNKNOWN_ident p
+    | SUNKNOWN_alias p -> FUNKNOWN_alias p
+
+  and ssignature kid_res_list = flip map kid_res_list & function
+    | (Scrape.KValue, id), SValue (ty, skv) ->
+        (Sig.KValue, Pident id), FValue (ty, skv)
+    | (KType, id), SType (pars, stk, pf, tyo, r) ->
+        let dty = Btype.newgenty (Tconstr (Pident id, pars, ref Mnil)) in
+        let ftk = stypekind dty stk in
+        (Sig.KType, Pident id), FType (pars, ftk, pf, tyo, r)
+    | (KTypext, id), STypext (path, pars, scas, tyo, pf) ->
+        (* [path] is a type name, so be careful of predef and globals *)
+        let ty = Btype.newgenty (Tconstr (path, pars, ref Mnil)) in
+        let dty = tyo // ty in
+        (Sig.KTypext, Pident id), FTypextRaw (pars, sconstructor_arguments scas, dty, tyo, pf)
+    | (KModule, id), SModule (sm, r) ->
+        (Sig.KModule, Pident id), FModule (smodule sm, r)
+    | (KModtype, id), SModtype smo ->
+        (* CR jfuruse: We do not flatten members of modtype. It is ok? *)
+        let fmo  = match smo with
+          | None -> None
+          | Some sm -> Some (smodule sm)
+        in
+        (Sig.KModtype, Pident id), FModtype fmo
+    | (KClass, id), SClass (params, oty, newty, path, vf, rec_status) ->
+        let meths =
+          let fields, _ = Ctype.(flatten_fields & object_fields oty) in
+          flip filter_map fields & fun (n, _fk, ty) ->
+            if n = "*dummy method*" then None
+            else Some ((Sig.KMethod, Pident (Ident.create n)), FMethod ty)
+        in
+        (Sig.KClass, Pident id), FClass (params, meths, newty, path, (vf, rec_status))
+    | (KClasstype, id), SClassType (params, oty, newty, path, vf, rec_status) ->
+        (* CR jfuruse: we do not count members of class type *)
+        let meths =
+          let fields, _ = Ctype.(flatten_fields & object_fields oty) in
+          flip filter_map fields & fun (n, _fk, ty) ->
+            if n = "*dummy method*" then None
+            else Some ((Sig.KMethod, Pident (Ident.create n)), FMethod ty)
+        in
+        (Sig.KClasstype, Pident id), FClassType (params, meths, newty, path, (vf, rec_status))
+    | kid, res ->
+        !!% "@[<2>ssignature is not implemented for %a :@ %a@]@."
+          (Ocaml.format_with [%derive.ocaml_of: k * Utils.Ident.t]) kid
+          (Ocaml.format_with [%derive.ocaml_of: Scrape.res]) res;
+        assert false
+end
+
+let pdot c id = match c with
+  | None -> Path.Pident id
+  | Some p -> Pdot (p,id.Ident.name,0)
+
+let papply c id = match c with
+  | None -> assert false
+  | Some p -> Path.Papply (p, Pident id)
+
+(** Scan Ident.t's and record their global access Path.t.
+    (Some Ident.t's are not reallay accessible by their global access Path.t
+    since they may be hidden by signatures)
+*)
+module Scan_ids2 = struct
+  open Simplify
+  open Path
+    
+  module Make(A : sig val tbl : (Ident.t, Path.t) Hashtbl.t end) = struct
+    include A
+
+    (* Register [id] is Globally accessible as [p] *)
+    let add id p = 
+      match Hashtbl.find_opt tbl id with
+      | None -> Hashtbl.add tbl id p
+      | Some p' ->
+          !!% "Warning: double binding of %s (%s and %s)@."
+            (Ident.string_of ~stamp:true id)
+            (Path.string_of p)
+            (Path.string_of p')
+        
+    let rec fsignature c s = iter (fsignature_item c) s
   
+    and fsignature_item c ((_k,p), v) =
+      let id = match p with
+        | Pident id -> id
+        | _ -> assert false
+      in
+      let p = pdot c id in
+      add id p;
+      let c' = Some p in
+      match v with
+      | FModule (m,_) -> fmodule c' m
+      | FType (_, ftk, _, _, _) -> ftypekind c ftk
+      | FClass (_, fsg, _newty, _p, (_vf(* _tyo, *), _r)) -> (* CR jfuruse: p is a type?!?!? *)
+          fsignature c' fsg;
+      (* We really need context extension for modtype and class type? *)
+      | FModtype (Some m) -> fmodule c' m
+      | FClassType (_, fsg, _newty, _p, (_vf, _r)) -> (* CR jfuruse: p is a type?!?!? *)
+          fsignature c' fsg
+      | _ -> ()
+  
+    and fmodule c = function
+      | FFunctor (id, None, m) ->
+          (* c(id) for body *)
+          add id (Pident id);
+          fmodule (Some (papply c id)) m
+      | FFunctor (id, Some mty, m) ->
+          (* c.id for arg,  c.(id) for body*)
+          add id (Pident id);
+          fmodule (Some (pdot c id)) mty;
+          fmodule (Some (papply c id)) m
+      | FSignature s -> fsignature c s
+      | FUNKNOWN_ident _ | FUNKNOWN_alias _ -> ()
+
+    and ftypekind _c = function
+      | FAbstract -> ()
+      | FOpen -> ()
+      | FRecord _fsg | FVariant _fsg ->
+          (* We do not scan idents of constructors and fields,
+             since they are not alpha-converted: The same constructor/field
+             can appear in more than one type definitions.
+             See tests/t35_double_entry.ml for such examples.
+          *)
+          () 
+  end
+
+  (* [po] is the global access path to the module *)
+  let scan po s =
+    let module M = Make(struct let tbl = Hashtbl.create 107 end) in
+    M.fsignature po s;
+    M.tbl
+
+  let rec rewrite tbl = function
+    | Pident id      -> Hashtbl.find tbl id
+    | Pdot (p, n, i) -> Pdot(rewrite tbl p, n, i)
+    | Papply(p1, p2) -> Papply (rewrite tbl p1, rewrite tbl p2)
+
+  let rewrite tbl p =
+    try rewrite tbl p with Not_found ->
+      !!% "WARNING: Path %s was not found in rewrite table@." (Path.string_of p);
+      raise Not_found
+end
+
+module Globalized2 = struct
+
+  module F = Simplify
+    
+  module Make(A : sig
+    val rewrite : Path.t -> Path.t
+  end) = struct
+
+    include Xprinttyp.Make(A)
+
+    let conv_ty = tree_of_type_scheme
+      
+    let fconstructor_arguments = function
+      | F.FCRecord id_mf_ty_list ->
+          Otyp_record (map (fun (id, mf, ty) ->
+            id.Ident.name, mf = Mutable, conv_ty ty) id_mf_ty_list)
+      | FCTuple tys -> Otyp_tuple (map conv_ty tys)
+  
+    let rec res tpath (* the path *) x = match x with
+      | F.FModule (fm,r) -> FModule (fmodule fm, r)
+      | FModtype fmo -> FModtype (Option.fmap fmodule fmo)
+      | FType (tys, ftk, pf, tyo, r) ->
+          FType (map conv_ty tys, ftypekind tpath ftk, pf, Option.fmap conv_ty tyo, r)
+      | FTypext _ -> assert false
+      | FTypextRaw (tys, fcas, ty', rto, pf) ->
+          FTypext (map conv_ty tys,
+                   (Otyp_arrow ("", fconstructor_arguments fcas, conv_ty ty')),
+                   Option.fmap conv_ty rto,
+                   pf)
+      | FValue (ty, svk) -> FValue (conv_ty ty, svk)
+      | FRecordField (mf, ty) -> FRecordField (mf, conv_ty ty)
+      | FVariantConstructor _ -> assert false
+      | FVariantConstructorRaw (fcas, t, rto) ->
+          begin match fconstructor_arguments fcas with
+          | Otyp_tuple [] ->
+              FVariantConstructor (conv_ty t, Option.fmap conv_ty rto)
+          | _ -> 
+              FVariantConstructor (Otyp_arrow ("", fconstructor_arguments fcas, conv_ty t), Option.fmap conv_ty rto)
+          end
+      | FClass (tys, fsg, newty, p, (vf, (*tyo, *) r)) -> (* CR jfuruse: p is a type?!?!? *)
+          FClass (map conv_ty tys, fsignature fsg, conv_ty newty,
+                  tree_of_path p, (vf, r))
+      | FClassType (tys, fsg, newty, p, (vf, r)) -> (* CR jfuruse: p is a type?!?!? *)
+          FClassType (map conv_ty tys, fsignature fsg, conv_ty newty,
+                      tree_of_path p, (vf, r))
+      | FMethod ty -> FMethod (conv_ty ty)
+  
+    and ftypekind tpath (* the path of the type *) = function
+      | FAbstract -> FAbstract
+      | FOpen -> FOpen
+      | FRecord sg -> FRecord (fsignature_for_construtor_and_fields tpath sg)
+      | FVariant sg -> FVariant (fsignature_for_construtor_and_fields tpath sg)
+  
+    and fsignature sg =
+      map (fun ((k,p), r) ->
+        let tp = tree_of_path p in
+        (k, tp), res tp r) sg
+  
+    and fsignature_for_construtor_and_fields tpath (* the path of the type *) sg =
+      (* Variant constructors and record fields are not guranteed to be unique.
+         We need the path of the types to give them unique paths.
+      *)
+      map (fun ((k,p), r) ->
+        let tp = match p with
+          | Path.Pident id -> Oide_dot (tpath, id.Ident.name)
+          | _ -> assert false
+        in
+        (k, tp), res tp r) sg
+
+    and fmodule = function
+      | FSignature sg -> FSignature (fsignature sg)
+      | FFunctor (id, fmo, fm) ->
+          FFunctor (Oide_ident id.Ident.name, Option.fmap fmodule fmo, fmodule fm)
+      | FUNKNOWN_ident p -> FUNKNOWN_ident (tree_of_path p)
+      | FUNKNOWN_alias p -> FUNKNOWN_alias (tree_of_path p)
+  end
+
+end
+
+
+
+(** Second step: Flatten
+
+    Flatten the tree structure.
+*)
+module Flatten2 = struct
+
+  open Sig
+  open Path
+
+  let rec fmodule = function
+    | FSignature fsg -> fsignature fsg
+    | FFunctor (id, _fmo, fm) -> fmodule fm
+    | FUNKNOWN_ident p -> []
+    | FUNKNOWN_alias p -> [] 
+
+  and fsignature kid_res_list = flip concat_map kid_res_list & fun x -> match x with
+    | (KValue, _), FValue _ -> [x]
+    | (KType, _), FType (_, ftk, _, _, _) ->
+        x :: begin match ftk with
+             | FRecord rs | FVariant rs -> rs
+             | FAbstract | FOpen -> []
+             end
+    | (KTypext, _), FTypext _ -> [x]
+    | (KModule, _), FModule (fm, _) -> x :: fmodule fm
+    | (KModtype, _), FModtype _fmo ->
+        (* CR jfuruse: We do not flatten members of modtype. It is ok? *)
+        [x]
+    | (KClass, _), FClass (_params, meths, _newty, _path, _) ->
+        x :: meths
+    | (KClasstype, _), FClassType _ -> [x]
+    | kid, res ->
+        !!% "@[<2>ssignature is not implemented for %a :@ %a@]@."
+          (Ocaml.format_with [%derive.ocaml_of: k * out_ident]) kid
+          (Ocaml.format_with [%derive.ocaml_of: Sig.res]) res;
+        assert false
+end
+  
+
+
 (** Second step: Flatten
 
     Flatten the tree structure.  Types, idents and paths are kept as they are
@@ -495,6 +796,10 @@ module Flatten = struct
     | SUNKNOWN_alias p -> FUNKNOWN_alias p, []
 
   and ssignature kid_res_list =
+    (* It is a bit silly but it returns 
+         (original_structure, original_structure :: its_substructures)
+       so that we can get the original structure for Scan_ids.
+    *)
     let x_items_list = flip map kid_res_list & function
        | (Scrape.KValue, id), SValue (ty, skv) ->
            let x = (Sig.KValue, Pident id), FValue (ty, skv) in
@@ -534,7 +839,7 @@ module Flatten = struct
            in
            let x = (Sig.KClass, Pident id), FClass (params, meths, newty, path, (vf, rec_status)) in
            x, x :: meths
-       | (KClassType, id), SClassType (params, oty, newty, path, vf, rec_status) ->
+       | (KClasstype, id), SClassType (params, oty, newty, path, vf, rec_status) ->
            (* CR jfuruse: we do not count members of class type *)
            let meths =
              let fields, _ = Ctype.(flatten_fields & object_fields oty) in
@@ -550,18 +855,10 @@ module Flatten = struct
              (Ocaml.format_with [%derive.ocaml_of: Scrape.res]) res;
            assert false
     in
-    map fst x_items_list,
-    concat_map snd x_items_list
+    map fst x_items_list, (* originals *)
+    concat_map snd x_items_list (* originals + sub structures *)
 end
   
-let pdot c id = match c with
-  | None -> Path.Pident id
-  | Some p -> Pdot (p,id.Ident.name,0)
-
-let papply c id = match c with
-  | None -> assert false
-  | Some p -> Path.Papply (p, Pident id)
-
 (** Scan Ident.t's and record their global access Path.t.
     (Some Ident.t's are not reallay accessible by their global access Path.t
     since they may be hidden by signatures)
@@ -617,10 +914,16 @@ module Scan_ids = struct
       | FSignature s -> fsignature c s
       | FUNKNOWN_ident _ | FUNKNOWN_alias _ -> ()
 
-    and ftypekind c = function
+    and ftypekind _c = function
       | FAbstract -> ()
       | FOpen -> ()
-      | FRecord fsg | FVariant fsg -> fsignature c fsg
+      | FRecord _fsg | FVariant _fsg ->
+          (* We do not scan idents of constructors and fields,
+             since they are not alpha-converted: The same constructor/field
+             can appear in more than one type definitions.
+             See tests/t35_double_entry.ml for such examples.
+          *)
+          () 
   end
 
   (* [po] is the global access path to the module *)
@@ -664,11 +967,11 @@ module Globalized = struct
             id.Ident.name, mf = Mutable, conv_ty ty) id_mf_ty_list)
       | FCTuple tys -> Otyp_tuple (map conv_ty tys)
   
-    let rec res x = match x with
+    let rec res tpath (* the path *) x = match x with
       | F.FModule (fm,r) -> FModule (fmodule fm, r)
       | FModtype fmo -> FModtype (Option.fmap fmodule fmo)
       | FType (tys, ftk, pf, tyo, r) ->
-          FType (map conv_ty tys, ftypekind ftk, pf, Option.fmap conv_ty tyo, r)
+          FType (map conv_ty tys, ftypekind tpath ftk, pf, Option.fmap conv_ty tyo, r)
       | FTypext _ -> assert false
       | FTypextRaw (tys, fcas, ty', rto, pf) ->
           FTypext (map conv_ty tys,
@@ -693,14 +996,28 @@ module Globalized = struct
                       tree_of_path p, (vf, r))
       | FMethod ty -> FMethod (conv_ty ty)
   
-    and ftypekind = function
+    and ftypekind tpath (* the path of the type *) = function
       | FAbstract -> FAbstract
       | FOpen -> FOpen
-      | FRecord sg -> FRecord (fsignature sg)
-      | FVariant sg -> FVariant (fsignature sg)
+      | FRecord sg -> FRecord (fsignature_for_construtor_and_fields tpath sg)
+      | FVariant sg -> FVariant (fsignature_for_construtor_and_fields tpath sg)
   
-    and fsignature sg = map (fun ((k,p), r) -> (k, tree_of_path p), res r) sg
+    and fsignature sg =
+      map (fun ((k,p), r) ->
+        let tp = tree_of_path p in
+        (k, tp), res tp r) sg
   
+    and fsignature_for_construtor_and_fields tpath (* the path of the type *) sg =
+      (* Variant constructors and record fields are not guranteed to be unique.
+         We need the path of the types to give them unique paths.
+      *)
+      map (fun ((k,p), r) ->
+        let tp = match p with
+          | Path.Pident id -> Oide_dot (tpath, id.Ident.name)
+          | _ -> assert false
+        in
+        (k, tp), res tp r) sg
+
     and fmodule = function
       | FSignature sg -> FSignature (fsignature sg)
       | FFunctor (id, fmo, fm) ->

@@ -41,14 +41,14 @@ end) : sig
                * fconstructor_arguments
                * type_expr
                * type_expr option (* if gadt *)
-               * private_flag (* This must be converted to FTypext in Globalized *)
+               * private_flag (** This must be converted to FTypext in Globalized *)
     | FTypext of type_expr list
                * type_expr (* constructor type *)
                * type_expr option (* return type if gadt *)
                * private_flag
     | FValue of type_expr * value_kind
     | FRecordField of mutable_flag * type_expr
-    | FVariantConstructorRaw of fconstructor_arguments * type_expr (* -> return_type *) * type_expr option (* return_type if it is a gadt *) (* This must be converted to FVariantConstructor in Globalized *)
+    | FVariantConstructorRaw of fconstructor_arguments * type_expr (* -> return_type *) * type_expr option (* return_type if it is a gadt *) (** This must be converted to FVariantConstructor in Globalized *)
     | FVariantConstructor of type_expr * type_expr option (* return type if gadt *) 
     | FClass of type_expr list (* params TODO variance *)
                 * fsignature (* only FMethod *)
