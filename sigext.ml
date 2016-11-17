@@ -566,10 +566,11 @@ module Scan_ids = struct
       match Hashtbl.find_opt tbl id with
       | None -> Hashtbl.add tbl id p
       | Some p' ->
-          !!% "WARNING: double binding of %s (%a and %a)@."
+          !!% "ERROR: double binding of %s (%a and %a)@."
             (Ident.string_of ~stamp:true id)
             Xoprint.print_ident p
-            Xoprint.print_ident p'
+            Xoprint.print_ident p';
+          assert false
         
     let rec fsignature c s = iter (fsignature_item c) s
   
@@ -1106,9 +1107,13 @@ let scrape top sg =
   !!% "Got %d items@." & length items;
 
   (* Dupe check *)
-  (* XXX We never see a failure... We do not probably need this *)
   let items, dups = uniq_dup_sorted compare & sort compare items in
-  if dups <> [] then !!% "DUPS! @[%a@]@." Sig.format (map fst dups);
+  if dups <> [] then begin
+    !!% "@[<2>ERROR: DUPS at %a!@ @[%a@]@]@."
+      (Option.format Xoprint.print_ident) top
+      Sig.format (map fst dups);
+    assert false
+  end;
   (* Dupe check, done *)
 
   items

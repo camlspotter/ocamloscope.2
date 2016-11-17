@@ -15,7 +15,11 @@ module Ident = struct
 
   let ocaml_of_t id = Ocaml.String (string_of id)
 
-  let is_predef id = id.Ident.stamp < 1000
+  let is_predef id =
+    (* 0 is persistent.
+       minus are used for methods in Sigext 
+    *)
+    id.Ident.stamp > 0 && id.Ident.stamp < 1000
 end
 
 module Path = struct

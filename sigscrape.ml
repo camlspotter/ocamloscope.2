@@ -35,9 +35,10 @@ let scrape_cmi x =
   let cmi = src.cmi in
   let cmi_infos = Cmi_format.read_cmi cmi in
   let module P = Xprinttyp.Make(struct let rewrite = out_ident_of_path end) in
-prerr_endline "Actual scraping... (this may take long time.)";
-  let fs = Hashcons.fsignature & Sigext.scrape (Some top) cmi_infos.Cmi_format.cmi_sign in
-prerr_endline "Actual scrape done.";
+  prerr_endline "Actual scraping... (this may take long time.)";
+  
+  let fs, t = time (fun () -> Hashcons.fsignature & Sigext.scrape (Some top) cmi_infos.Cmi_format.cmi_sign) () in
+  !!% "Actual scrape done in %.2f secs@." t;
   top, fs
 
 let test_cmi cmi =
@@ -64,7 +65,7 @@ let scrape_ocamlfind_package destdir apg =
         }
       in
       if not & File.Test._f path then begin
-        !!% "Saving %s %d ...@." path (snd & Data.SigFile.sizes sigfile);
+        !!% "Saving %s (size= %d) ...@." path (snd & Data.SigFile.sizes sigfile);
         Data.SigFile.save path sigfile;
         !!% "Saved.@.";
       end;
