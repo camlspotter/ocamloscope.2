@@ -11,11 +11,9 @@ let scrape_cmi x =
   in
   (* !!% "@[<2>%s:@ source: @[%a@]@]@.@." x Zpack.format src; *)
   (* XXX need to fix the following! *)
-  let notop = Path.Pident (Ident.create_persistent "NOTOP") in
-  let top = match src.Cm.paths with
-    | [] -> Path.Pdot (notop, module_name x, 0)
-    | [ Oide_dot(Oide_ident p,s) ] -> Path.(Pdot (Pident (Ident.create_persistent p), s, 0))
-    | _::_::_ -> assert false
+  let top = Hashcons.out_ident & match src.Cm.paths with
+    | [] -> Oide_dot (Oide_ident "NOTOP", module_name x)
+    | [ p ] -> p
     | _ -> assert false
   in
 
@@ -40,7 +38,6 @@ let scrape_cmi x =
 prerr_endline "Actual scraping... (this may take long time.)";
   let fs = Hashcons.fsignature & Sigext.scrape (Some top) cmi_infos.Cmi_format.cmi_sign in
 prerr_endline "Actual scrape done.";
-  let top = Hashcons.out_ident & P.tree_of_path top in
   top, fs
 
 let test_cmi cmi =

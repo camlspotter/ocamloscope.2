@@ -36,7 +36,7 @@ module Print : sig
   end
 end
 
-val scrape : Path.t option -> signature -> fsignature
+val scrape : out_ident option -> signature -> fsignature
 (** [scrape p sg] converts the signature [sg] of a module of 
     a global access path [p] to [fsignature]. 
 
@@ -44,4 +44,4 @@ val scrape : Path.t option -> signature -> fsignature
     predefined values and types.
 *)
 
-val test : Path.t option -> signature -> unit
+val test : out_ident option -> signature -> unit

@@ -1092,7 +1092,6 @@ let scrape top sg =
 
   let fsig = Simplify.ssignature res in
 
-  let top = Option.fmap out_ident_of_path top in
   let tbl = Scan_ids.scan top fsig in
   let fsig = globalize tbl fsig in
   let items = Flatten.fsignature fsig in
@@ -1124,7 +1123,6 @@ let test top sg =
   let fsig = Simplify.ssignature res in
   !!% "%a@.@." Simplify.format fsig;
 
-  let top = Option.fmap out_ident_of_path top in
   let tbl = Scan_ids.scan top fsig in
 
   let fsig = globalize tbl fsig in
