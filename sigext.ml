@@ -1089,13 +1089,16 @@ let globalize tbl fsig =
 let scrape top sg =
   Reset.typing ();
   let env = Env.initial_unsafe_string in
-  let res = Scrape.signature env sg in
-
-  let fsig = Simplify.ssignature res in
-
-  let tbl = Scan_ids.scan top fsig in
-  let fsig = globalize tbl fsig in
-  let items = Flatten.fsignature fsig in
+  let res, res_time = time (Scrape.signature env) sg in
+  if res_time > 1.0 then !!% "Scrape took %.02f secs@." res_time;
+  let fsig, sim_time = time Simplify.ssignature res in
+  if sim_time > 1.0 then !!% "Simplify took %.02f secs@." sim_time;
+  let tbl, scan_time = time (Scan_ids.scan top) fsig in
+  if scan_time > 1.0 then !!% "Simplify took %.02f secs@." scan_time;
+  let fsig, global_time = time (globalize tbl) fsig in
+  if global_time > 1.0 then !!% "Globalize took %.02f secs@." global_time;
+  let items, flat_time = time Flatten.fsignature fsig in
+  if flat_time > 1.0 then !!% "Flatten took %.02f secs@." flat_time;
 
   (* Adding the top module itself *)
   let items = match top with
@@ -1107,7 +1110,8 @@ let scrape top sg =
   !!% "Got %d items@." & length items;
 
   (* Dupe check *)
-  let items, dups = uniq_dup_sorted compare & sort compare items in
+  let (items, dups), dup_time = time (fun () -> uniq_dup_sorted compare & sort compare items) () in
+  if dup_time > 1.0 then !!% "Dupcheck took %.02f secs@." dup_time;
   if dups <> [] then begin
     !!% "@[<2>ERROR: DUPS at %a!@ @[%a@]@]@."
       (Option.format Xoprint.print_ident) top
