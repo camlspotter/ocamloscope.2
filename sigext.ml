@@ -1082,7 +1082,7 @@ module Print = struct
 end
 
 let globalize tbl fsig =
-  let rewrite = Rewrite.rewrite (Scan_ids.rewrite tbl) in
+  let rewrite = memoize & Rewrite.rewrite (Scan_ids.rewrite tbl) in
   let module G = Globalized.Make(struct let rewrite = rewrite end) in
   G.fsignature fsig
     
