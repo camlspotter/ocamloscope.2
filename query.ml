@@ -54,18 +54,55 @@ let parse_as_wildcard_colon_type s =
 let parse_path s =
   let f s = 
     try
+      let s = "(" ^ s ^ ": int)" in
       let lexbuf = Lexing.from_string s in
       let e = Parse.expression lexbuf in
       match e.pexp_desc with
-      | Pexp_constraint ({pexp_desc= Pexp_ident {txt=lid}}, _ty) -> Some (Path (Coretype.out_of_longident lid))
-      | Pexp_constraint ({pexp_desc= Pexp_construct ({txt=lid}, _)}, _ty) -> Some (Path (Coretype.out_of_longident lid))
+      | Pexp_constraint (({pexp_desc} as _e), _ty) ->
+          begin match pexp_desc with
+          | Pexp_ident {txt=lid} -> Some (Path (Coretype.out_of_longident lid))
+          | Pexp_construct ({txt=lid}, None) -> Some (Path (Coretype.out_of_longident lid))
+          | _ -> None (* !!% "Error: %a@." Pprintast.expression e; None *)
+          end
       | _ -> None
     with
     | _ -> None
   in
-  match f ("(" ^ s ^ ": int)") with
-  | Some x -> Some x
-  | None -> f ("(( " ^ s ^ " ) : int)")
+  (* XXX g can do everything f can? *)
+  let g s = 
+    try
+      let s = "(x : " ^ s ^ ")" in
+      let lexbuf = Lexing.from_string s in
+      let e = Parse.expression lexbuf in
+      match e.pexp_desc with
+      | Pexp_constraint (_, ty) ->
+          begin match ty.ptyp_desc with
+          | Ptyp_constr({txt=lid},[]) -> Some (Path (Coretype.out_of_longident lid))
+          | _ -> None
+          end
+      | _ -> None
+    with
+    | _ -> None
+  in
+  let h s = 
+    try
+      let s = "(x : " ^ s ^ ".x)" in
+      let lexbuf = Lexing.from_string s in
+      let e = Parse.expression lexbuf in
+      match e.pexp_desc with
+      | Pexp_constraint (_, ty) ->
+          begin match ty.ptyp_desc with
+          | Ptyp_constr({txt=Longident.Ldot(lid,_)},[]) -> Some (Path (Coretype.out_of_longident lid))
+          | _ -> None
+          end
+      | _ -> None
+    with
+    | _ -> None
+  in
+  let open Option in
+  f s
+  >>=! fun () -> g s
+  >>=! fun () -> h s
 
 module Re = Ppx_orakuda.Regexp.Re_pcre
 open Re.Infix
