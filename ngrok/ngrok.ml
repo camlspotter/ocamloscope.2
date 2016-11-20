@@ -7,7 +7,7 @@ let form () =
   let q        = Coerce.input & getById "q" in
   let packtype = Coerce.select & getById "packtype" in
   let packs    = Coerce.input & getById "packs" in
-  let form     = Coerce.form & getById "form" in
+  let _form     = Coerce.form & getById "form" in
   let submit   = Coerce.input & getById "submit" in
   let insert   = getById "insert" in
   let wait     = getById "wait" in
@@ -36,9 +36,11 @@ let form () =
     Lwt.return ()
   in
     
+(*
   form##.onsubmit := (Dom.handler (fun _ ->
     catch_and_alert_ (fun () -> ignore & query ());
     Js._false));
+*)
     
   let query_in_url () =
     let open Url in
