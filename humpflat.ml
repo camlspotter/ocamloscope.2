@@ -29,8 +29,12 @@ let flatten p me =
     | EUnknownPath _ -> []
         
     | _ ->
+(*
         !!% "WARNING: @[<2>Impos mexp:@ %a@ @[%a@]@]@." Hump.format_path p Hump.format me;
-        assert false
+        assert false 
+*)
+        !!% "WARNING: @[<2>Impos mexp:@ %a ...@." Hump.format_path p;
+        [] (* XXX workaround *)
           
 (*
       if some special condition then !!% "WARNING: @[<2>Impos:@ %a @[%a@]@]@." Hump.format_path p Hump.format x;
@@ -70,11 +74,14 @@ let flatten p me =
 (*
       | EDot _ -> [] (* hmmm. EDot (ELet(true,...)): this can be fixed *)
 *)
-          
+
       | _ ->
+(*
           !!% "WARNING: @[<2>Impos sitem:@ %a@ @[%a@]@]@." Hump.format_path p Hump.format si;
-    (* [((k,p),LocNone)] *)
-          assert false
+           assert false 
+*)
+         !!% "WARNING: @[<2>Impos sitem:@ %a@ ...@]@." Hump.format_path p;
+         [((k,p),LocNone)] (* XXX workaround *)
     in
     sigitem x
   in

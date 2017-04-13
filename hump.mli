@@ -76,6 +76,7 @@ and expr =
     (** Recursive module: [module rec M : sig .. end = struct .. end] *)  
   | EAddAlias    of v * expr
     (** [EddAlias (v,e)] explicitly adds [(Aliased (v,_)] *)
+  | EError       of string
 [@@deriving conv{ocaml_of}, typerep]
 
 val format : Format.t -> expr -> unit

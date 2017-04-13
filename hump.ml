@@ -61,6 +61,7 @@ and expr =
   | EAnnotate of string * expr
   | ERecM of id * (id * expr option) list * (id * expr) list
   | EAddAlias of v * expr
+  | EError of string
 [@@deriving conv{ocaml_of}, typerep]
 
 let format ppf = Ocaml.format_with ocaml_of_expr ppf

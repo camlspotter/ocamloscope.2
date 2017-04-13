@@ -1,5 +1,4 @@
 open Spotlib.Spot
-open Utils
 open List
 
 open Hump
@@ -48,6 +47,7 @@ let rec add_alias v' e = match e with
   | EUnknownPath _ 
   | ERecM _
       -> e
+  | EError _ -> e
 
   (* not expanded ? :-( *)
   | EAnnotate _
@@ -84,8 +84,11 @@ end) = struct
   let rec eval_global p = match Hashtbl.find_opt global_cache p with
     | Some (`Ok x) -> Some x
     | Some (`Error e) ->
-        !!% "Humpeval.Make(..).eval_global: %a: %s" (Ocaml.format_with Hump.ocaml_of_path) p e;
+        !!% "Humpeval.Make(..).eval_global: %a: %s@." (Ocaml.format_with Hump.ocaml_of_path) p e;
+(*
         criticalf "Humpeval.Make(..).eval_global: %s" e
+ *)
+        Some (EError "looped")
     | None ->
         match A.global_source p with
         | None ->
@@ -100,6 +103,7 @@ end) = struct
             Some x
     
   and eval e x0 = match x0 with
+    | EError _ -> x0
     | ERecM _ -> x0 (* no further evaluation of recursive module *)
     | EAddAlias (v,x) ->
         let x = eval e x in
