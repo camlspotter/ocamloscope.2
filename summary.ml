@@ -121,12 +121,12 @@ let final_print show_v ppf (g : (alias * int * (int * DB.item * 'trace1 * 'trace
         Sigext.Print.fsignature_item false ppf fsig;
         Format.fprintf ppf "@."
     | Some doc ->
-        Format.fprintf ppf "@[<v>%a@,(** %s *)@]@."
+        Format.fprintf ppf "@[<v>%a@,(** %s *)@]"
           (Sigext.Print.fsignature_item false) fsig
           doc
     end;
     if show_v then 
-      Format.fprintf ppf "@[%a@]@." (Option.format Hump.print_v) x.DB.v
+      Format.fprintf ppf "@[%a@]" (Option.format Hump.print_v) x.DB.v
   in
   match nonaliased with
   | [] ->
