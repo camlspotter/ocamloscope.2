@@ -5,9 +5,10 @@ val parse : string -> (Parsetree.expression, [> `Exn of exn]) Result.t option
 
 val interpret
   : Data.DB.t
-  -> Parsetree.expression
-  -> Query.PackageSpec.t
-  -> Query.PackageSpec.t
+    -> Parsetree.expression
+    -> Conf.t
+    -> Query.PackageSpec.t
+    -> Conf.t * Query.PackageSpec.t
 (** Execute an directive. Directive execution may modify the package spec.
 
     Supported directives are:

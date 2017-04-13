@@ -84,6 +84,9 @@ val format : Format.t -> expr -> unit
 val get_doc : v -> string option
 (** Get the best docstring. *) (* XXX not well tested *)
   
+val get_doc' : v -> string option
+(** Get the docstring directly associated this [v]. *) (* XXX not well tested *)
+  
 val print_v : Format.t -> v -> unit
 (** Human friendly printer of [v] *)
   

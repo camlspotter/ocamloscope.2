@@ -29,6 +29,7 @@ OCAMLPPFLAGS=
 
 FILES[] =
     utils
+    conf
     cmt
     reset
     dumpsource

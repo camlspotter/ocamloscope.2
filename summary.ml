@@ -111,7 +111,7 @@ let final_print show_v ppf (g : (alias * int * (int * DB.item * 'trace1 * 'trace
   let (!!%) fmt = Format.fprintf ppf fmt in
   let fsig i = Data.DB.fsignature_item i in
 
-  let doc i = Option.bind i.DB.v Hump.get_doc in
+  let doc i = Option.bind i.DB.v Hump.get_doc' in
 
   let format_item ppf x =
     let fsig = fsig x in

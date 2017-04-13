@@ -12,21 +12,23 @@ let parse s = case s
      )
   |> default (fun () -> None)
 
-let interpret db e pspec = match e with
+let interpret db e conf pspec = match e with
   | [%expr packages] ->
-      let open Data.DB in
-      flip iter db.packs (fun (n,v) ->
-        match v with
-        | None -> !!% "%s@." n
-        | Some v -> !!% "%s.%s@." n v);
-          pspec
-  | [%expr all]     -> Query.PackageSpec.All_but []
-  | [%expr vanilla] -> Query.PackageSpec.Vanilla []
-  | [%expr none]    -> Query.PackageSpec.Just []
+     let open Data.DB in
+     flip iter db.packs (fun (n,v) ->
+         match v with
+         | None -> !!% "%s@." n
+         | Some v -> !!% "%s.%s@." n v);
+     conf, pspec
+  | [%expr all]     -> conf, Query.PackageSpec.All_but []
+  | [%expr vanilla] -> conf, Query.PackageSpec.Vanilla []
+  | [%expr none]    -> conf, Query.PackageSpec.Just []
   | [%expr quit] ->
       !!% "Bye@.";
       exit 0
+  | [%expr show_v true] -> { Conf.show_v = true }, pspec
+  | [%expr show_v false] -> { Conf.show_v = false }, pspec
   | _ ->
       !!% "illegal directive@.";
-      pspec
+      conf, pspec
       

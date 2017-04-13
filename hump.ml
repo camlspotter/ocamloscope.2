@@ -80,6 +80,13 @@ let rec get_doc = function
       | None -> get_doc v1
       | Some d -> Some d
 
+let rec get_doc' = function
+  | Prim _ -> None
+  | LocNone -> None
+  | Def d -> d.doc
+  | Aliased (v1,_v2) -> get_doc' v1
+  | Coerced (_v1,v2) -> get_doc' v2
+
 let rec print_v ppf =
   let open Format in
   function
