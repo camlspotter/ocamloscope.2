@@ -118,8 +118,7 @@ let final_print show_v ppf (g : (alias * int * (int * DB.item * 'trace1 * 'trace
     let doc = doc x in
     begin match doc with
     | None -> 
-        Sigext.Print.fsignature_item false ppf fsig;
-        Format.fprintf ppf "@."
+        Sigext.Print.fsignature_item false ppf fsig
     | Some doc ->
         Format.fprintf ppf "@[<v>%a@,(** %s *)@]"
           (Sigext.Print.fsignature_item false) fsig
