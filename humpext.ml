@@ -992,29 +992,21 @@ end) = struct
     | Tcoerce_alias of Path.t * module_coercion
   *)
   
-    and module_type c mt = module_type_desc c mt.mty_env mt.mty_type mt.mty_desc
-  
-  (*
-  and module_type =
-    { mty_desc: module_type_desc;
-      mty_type : Types.module_type;
-      mty_env : Env.t;
-      mty_loc: Location.t;
-      mty_attributes: attributes;
-     }
-  *)
-  
-    and module_type_desc c env mty = function
+    and module_type c mt =
+      let env = mt.mty_env in
+      let mty = mt.mty_type in
+      match mt.mty_desc with
       | Tmty_signature s -> signature c s
   
       | Tmty_ident (p, {loc=_}) -> path KModtype p
   
-      | Tmty_alias (p, {loc=_}) ->
-          (* XXX module M = N  in signature *)
-          (* It is not referring the module type named p but
-             the module type of the module p 
+      | Tmty_alias (p, {loc}) ->
+         (* XXX module M = N  in signature *)
+         (* It is not referring the module type named p but
+            the module type of the module p 
           *)
-          path KModule p
+         let doc = Doc.get mt.mty_attributes in
+         EAddAlias (def KModule c loc doc, path KModule p)
       | Tmty_functor (id, {loc=_}, mtyo, mty) ->
           let i = iname_func_arg id in
           let mtyo = Option.fmap (module_type c) mtyo in
@@ -1040,6 +1032,14 @@ end) = struct
       | Tmty_typeof m -> module_expr c m
   
   (*
+  and module_type =
+    { mty_desc: module_type_desc;
+      mty_type : Types.module_type;
+      mty_env : Env.t;
+      mty_loc: Location.t;
+      mty_attributes: attributes;
+     }
+  
   and module_type_desc =
       Tmty_ident of Path.t * Longident.t loc
     | Tmty_signature of signature
