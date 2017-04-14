@@ -245,11 +245,17 @@ let fsignature_item orgdoc (i : Data.DB.item) =
   in
   let doc =
     match 
-      orgdoc, Option.bind i.Data.DB.v Hump.get_doc
+      orgdoc, Option.bind i.Data.DB.v Hump.get_doc'
     with
-    | _, None -> [ H.div ~a: [H.a_class [ "docstring" ]] [ H.pcdata "no doc" ] ]
-    | Some orgd, Some d when orgd = d -> []
-    | _, Some d ->  [ H.div ~a: [H.a_class [ "docstring" ]] [ H.pcdata d ] ]
+    | _, None ->
+       (* Has no direct document *)
+       [ H.div ~a: [H.a_class [ "docstring" ]] [ H.pcdata "no doc" ] ]
+    | Some orgd, Some d when orgd = d ->
+       (* The same document *)
+       []
+    | _, Some d ->
+       (* Commented differently *)
+       [ H.div ~a: [H.a_class [ "docstring" ]] [ H.pcdata d ] ]
   in
   H.div ~a: [ H.a_class [ "item" ] ]
     ( fsig
