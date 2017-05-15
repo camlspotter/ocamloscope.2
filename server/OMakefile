@@ -59,7 +59,7 @@ FILES[] =
 
 
 if $(not $(equal $(OSTYPE), Win32))
-    PROGRAM = server
+    PROGRAM = oco-server
 
     MyOCamlProgram($(PROGRAM), $(FILES))
 

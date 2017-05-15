@@ -65,7 +65,7 @@ FILES[] =
 
 PROGRAM = oco
 
-NO_INSTALL=true
+# NO_INSTALL=true
 MyOCamlProgram($(PROGRAM), $(FILES))
 
 Subdirs()

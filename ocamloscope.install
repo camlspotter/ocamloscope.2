@@ -1,0 +1,4 @@
+bin: [
+     "oco"
+     "server/oco-server"
+]
