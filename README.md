@@ -1,40 +1,18 @@
 # Build
 
-You need the following OCaml packages:
+Checkout a branch named `b<version-number>`.  Then,
 
-```
-spotlib
-compiler-libs.common
-ppx_import
-ppx_meta_conv
-ppx_meta_conv_ocaml
-typerep
-ppx_typerep_conv
-ppx_orakuda
-ppx_monadic
-levenshtein
-opamfind
-unmagic
-ppx_tools
+```shell
+$ opam pin add ocamloscope .
 ```
 
-In non Windows, you also need the following to compile the server.
-
-```
-cohttp.lwt
-tyxml
-tyxml.ppx
-```
-
-In Windows, the server cannot be compiled since `lwt` is not compiled with Unix support.
-
-The source code of OCamlOScope.2 should be compilable with the latest versions of these packages, but it is not always guaranteed.
+The OPAM file is at `opam/opam`.
 
 # Scraping
 
 ```
 $ mkdir out
-$ ./oco scrape
+$ oco scrape
 ```
 
 The command scrapes the installed OCamlFind packages and save the result under `out/` directory.  All the packages must be compiled with `-bin-annot` compiler option and the build files must be kept.  Here is an example of such a setting:
@@ -47,7 +25,7 @@ $ export OPAMKEEPBUILDDIR=1
 Compilers and packages should be installed using OPAM for easier scraping.  If the compiler or some packages are installed by hand, not by OPAM, you have to specify the source directory of these softwares explicitly with `--src-dir` option. For example:
 
 ```
-$ ./oco scrape --src-dir $HOME/build/ocaml-4.03.0 --src-dir $HOME/mysrc/mypackage
+$ oco scrape --src-dir $HOME/build/ocaml-4.03.0 --src-dir $HOME/mysrc/mypackage
 ```
 
 Scraping may fail if source files or `.cm*` files of scraping modules are not found.
@@ -67,7 +45,7 @@ You can send `<package>.dat` files to OCamlOScope server maintainer to add the p
 After scraping, you have to manually link these `*.dat` files into one:
 
 ```
-$ ./oco link
+$ oco link
 ```
 
 The scraped data are linked together into one file: `out/all.all`.
@@ -77,7 +55,7 @@ The scraped data are linked together into one file: `out/all.all`.
 After linking, you can start a search session:
 
 ```
-$ ./oco search
+$ oco search
 ...
 ? <input your query>
 ```
