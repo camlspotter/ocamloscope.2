@@ -13,8 +13,6 @@
 (*                                                                        *)
 (**************************************************************************)
 
-[@@@ocaml.warning "-27"]
-
 open Format
 open Outcometree
 
@@ -24,12 +22,20 @@ let cautious f ppf arg =
   try f ppf arg with
     Ellipsis -> fprintf ppf "..."
 
+let rec print_ident ppf =
+  function
+    Oide_ident s -> pp_print_string ppf s
+  | Oide_dot (id, s) ->
+      print_ident ppf id; pp_print_char ppf '.'; pp_print_string ppf s
+  | Oide_apply (id1, id2) ->
+      fprintf ppf "%a(%a)" print_ident id1 print_ident id2
+
 let parenthesized_ident name =
   (List.mem name ["or"; "mod"; "land"; "lor"; "lxor"; "lsl"; "lsr"; "asr"])
   ||
   (match name.[0] with
-    | 'a'..'z' | 'A'..'Z' | '\223'..'\246' | '\248'..'\255' | '_' 
-    | '{' (* for packages *) | '(' (* already done *) -> false
+      'a'..'z' | 'A'..'Z' | '\223'..'\246' | '\248'..'\255' | '_' ->
+        false
     | _ -> true)
 
 let value_ident ppf name =
@@ -37,25 +43,6 @@ let value_ident ppf name =
     fprintf ppf "( %s )" name
   else
     pp_print_string ppf name
-
-let rec print_ident ppf =
-  function
-  | Oide_ident "" -> assert false
-  | Oide_ident s when Some ps <-- Packpath.parse s ->
-      begin match ps with
-      | [] -> assert false
-      | p::_ ->
-          let s = 
-            if String.length s <= String.length p + 6 (* {xxx,...} *) then s
-            else "{" ^ p ^ ",...}"
-          in
-          pp_print_string ppf s                           
-      end
-  | Oide_ident s -> value_ident ppf s
-  | Oide_dot (id, s) ->
-      print_ident ppf id; pp_print_char ppf '.'; value_ident ppf s
-  | Oide_apply (id1, id2) ->
-      fprintf ppf "%a(%a)" print_ident id1 print_ident id2
 
 (* Values *)
 
@@ -225,8 +212,8 @@ and print_simple_out_type ppf =
           Ovar_fields fields ->
             print_list print_row_field (fun ppf -> fprintf ppf "@;<1 -2>| ")
               ppf fields
-        | Ovar_name (id, tyl) ->
-            fprintf ppf "@[%a%a@]" print_typargs tyl print_ident id
+        | Ovar_typ typ ->
+           print_simple_out_type ppf typ
       in
       fprintf ppf "%s[%s@[<hv>@[<hv>%a@]%a ]@]" (if non_gen then "_" else "")
         (if closed then if tags = None then " " else "< "
@@ -363,10 +350,10 @@ let out_class_type = ref print_out_class_type
 
 (* Signature *)
 
-let out_module_type = ref (fun _ -> failwith "Xoprint.out_module_type")
-let out_sig_item = ref (fun _ -> failwith "Xoprint.out_sig_item")
-let out_signature = ref (fun _ -> failwith "Xoprint.out_signature")
-let out_type_extension = ref (fun _ -> failwith "Xoprint.out_type_extension")
+let out_module_type = ref (fun _ -> failwith "Oprint.out_module_type")
+let out_sig_item = ref (fun _ -> failwith "Oprint.out_sig_item")
+let out_signature = ref (fun _ -> failwith "Oprint.out_signature")
+let out_type_extension = ref (fun _ -> failwith "Oprint.out_type_extension")
 
 let rec print_out_functor funct ppf =
   function
@@ -444,7 +431,7 @@ and print_out_sig_item ppf =
   | Osig_typext (ext, Oext_exception) ->
       fprintf ppf "@[<2>exception %a@]"
         print_out_constr (ext.oext_name, ext.oext_args, ext.oext_ret_type)
-  | Osig_typext (ext, es) ->
+  | Osig_typext (ext, _es) ->
       print_out_extension_constructor ppf ext
   | Osig_modtype (name, Omty_abstract) ->
       fprintf ppf "@[<2>module type %s@]" name
@@ -467,7 +454,13 @@ and print_out_sig_item ppf =
           ppf td
   | Osig_value vd ->
       let kwd = if vd.oval_prims = [] then "val" else "external" in
-      let pr_prims ppf _ = () in
+      let pr_prims ppf =
+        function
+          [] -> ()
+        | s :: sl ->
+            fprintf ppf "@ = \"%s\"" s;
+            List.iter (fun s -> fprintf ppf "@ \"%s\"" s) sl
+      in
       fprintf ppf "@[<2>%s %a :@ %a%a%a@]" kwd value_ident vd.oval_name
         !out_type vd.oval_type pr_prims vd.oval_prims
         (fun ppf -> List.iter (fun a -> fprintf ppf "@ [@@@@%s]" a.oattr_name))
@@ -513,6 +506,9 @@ and print_out_type_decl kwd ppf td =
   let print_immediate ppf =
     if td.otype_immediate then fprintf ppf " [%@%@immediate]" else ()
   in
+  let print_unboxed ppf =
+    if td.otype_unboxed then fprintf ppf " [%@%@unboxed]" else ()
+  in
   let print_out_tkind ppf = function
   | Otyp_abstract -> ()
   | Otyp_record lbls ->
@@ -530,13 +526,19 @@ and print_out_type_decl kwd ppf td =
         print_private td.otype_private
         !out_type ty
   in
-  fprintf ppf "@[<2>@[<hv 2>%t%a@]%t%t@]"
+  fprintf ppf "@[<2>@[<hv 2>%t%a@]%t%t%t@]"
     print_name_params
     print_out_tkind ty
     print_constraints
     print_immediate
+    print_unboxed
 
 and print_out_constr ppf (name, tyl,ret_type_opt) =
+  let name =
+    match name with
+    | "::" -> "(::)"   (* #7200 *)
+    | s -> s
+  in
   match ret_type_opt with
   | None ->
       begin match tyl with

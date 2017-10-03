@@ -3,14 +3,14 @@ OCAMLINCLUDES= . ..  # . is required otherwise render is gone!
 OCAMLPACKS[]=
     spotlib
     compiler-libs.common
-    ppx_meta_conv_ocaml
-    typerep
-    ppx_typerep_conv
+    ppx_meta_conv.ocaml
+#    typerep
+#    ppx_typerep_conv
     ppx_orakuda.regexp_re_pcre
     ppx_monadic
     levenshtein
     opamfind
-    unmagic
+#    unmagic
     ppx_tools.metaquot
     lwt
     cohttp

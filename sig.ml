@@ -1,8 +1,9 @@
 open Spotlib.Spot
-open Typerep_lib.Std
+open Ocaml_conv.Default
+(* open Typerep_lib.Std *)
 
 type k = KModule | KModtype | KType | KTypext | KValue | KClass | KClasstype | KConstructor | KField | KMethod
-[@@deriving conv{ocaml_of}, typerep]
+[@@deriving conv{ocaml_of}(*, typerep*)]
 
 let string_of_k = function
   | KModule      -> "module"
@@ -30,19 +31,19 @@ let parse_k s = match String.split (function ' ' | '\t' -> true | _ -> false) s 
   | [ "method" ]         -> Some KMethod
   | _ -> None
 
-type value_kind = SVal_prim | SVal_reg [@@deriving conv{ocaml_of}, typerep]
+type value_kind = SVal_prim | SVal_reg [@@deriving conv{ocaml_of}(*, typerep*)]
   
 type rec_status   = [%import: Types.rec_status]
 and  private_flag = [%import: Asttypes.private_flag]
 and  mutable_flag = [%import: Asttypes.mutable_flag]
 and  virtual_flag = [%import: Asttypes.virtual_flag]
-[@@deriving conv{ocaml_of}, typerep]
+[@@deriving conv{ocaml_of}(*, typerep*)]
 
 type out_ident     = [%import: Outcometree.out_ident]
 and  out_type      = [%import: Outcometree.out_type]
 and  out_variant   = [%import: Outcometree.out_variant]
 and  out_attribute = [%import: Outcometree.out_attribute]
-[@@deriving conv{ocaml_of}, typerep]
+[@@deriving conv{ocaml_of}(*, typerep*)]
 
 module Flatten(A : sig
   type type_expr [@@deriving conv{ocaml_of}]

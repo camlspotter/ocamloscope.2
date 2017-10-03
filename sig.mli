@@ -1,14 +1,14 @@
 (** Sig: names and types defined in OCaml programs, extracted from *.cmi files *)
 
 type k = KModule | KModtype | KType | KTypext | KValue | KClass | KClasstype | KConstructor | KField | KMethod
-[@@deriving conv{ocaml_of}, typerep]
+[@@deriving conv{ocaml_of}(*, typerep*)]
 (** Kinds of the objects *)
     
 val string_of_k : k -> string
 
 val parse_k : string -> k option
 
-type value_kind = SVal_prim | SVal_reg [@@deriving conv{ocaml_of}, typerep]
+type value_kind = SVal_prim | SVal_reg [@@deriving conv{ocaml_of}(*, typerep*)]
 (** Regular value or primitive *)
 
 (* Add ocaml_of_xxx and typerep things to some data types *)    
@@ -20,7 +20,7 @@ and  out_ident     = [%import: Outcometree.out_ident]
 and  out_type      = [%import: Outcometree.out_type]
 and  out_variant   = [%import: Outcometree.out_variant]
 and  out_attribute = [%import: Outcometree.out_attribute]
-  [@@deriving conv{ocaml_of}, typerep]
+  [@@deriving conv{ocaml_of}(*, typerep*)]
 
 module Flatten(A : sig
   type type_expr [@@deriving conv{ocaml_of}]

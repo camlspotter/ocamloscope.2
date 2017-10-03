@@ -15,6 +15,7 @@ open Types
 open Utils
 open List
 open Sig
+open Ocaml_conv.Default
 
 type type_expr = Types.type_expr
 let ocaml_of_type_expr ty = Ocaml.String (Format.sprintf "%a" Printtyp.type_scheme ty)
@@ -837,7 +838,7 @@ module Print = struct
     and variant = function
       | Ovar_fields fs ->
           Ovar_fields (map (fun (s,b,ts) -> (s,b,map f ts)) fs)
-      | Ovar_name (i, ts) -> Ovar_name (path i, map f ts)
+      | Ovar_typ typ -> Ovar_typ (f typ)
     in
     f ty
     

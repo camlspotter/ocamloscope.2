@@ -25,7 +25,7 @@ let out_of_core_type cty =
         Otyp_constr (longident lid, map ty ctys)
     | Ptyp_object (fields, closed) ->
         Otyp_object (
-          flip map fields (fun (s, _, cty) -> (s, ty cty)),
+          flip map fields (fun (s, _, cty) -> (s.txt, ty cty)),
           (match closed with 
           | Closed -> None
           | Open -> Some false (* ? *))
@@ -87,7 +87,7 @@ and out_variant =
         (* object method type like x : int is actually marked as a poly in core_type *)
         ty cty
 
-    | Ptyp_poly (vars, cty) -> Otyp_poly (vars, ty cty)
+    | Ptyp_poly (vars, cty) -> Otyp_poly (List.map (fun x -> x.txt) vars, ty cty)
     | Ptyp_package _ -> assert false (* I guess it is no longer valid *)
     | Ptyp_extension _ -> assert false (* CR jfuruse: todo *)
   in

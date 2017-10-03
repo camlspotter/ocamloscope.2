@@ -14,14 +14,14 @@ OCAMLPACKS[]=
     compiler-libs.common
     ppx_import
     ppx_meta_conv
-    ppx_meta_conv_ocaml
-    typerep
-    ppx_typerep_conv
+    ppx_meta_conv.ocaml
+#    typerep
+#    ppx_typerep_conv
     ppx_orakuda.regexp_re_pcre
     ppx_monadic
     levenshtein
     opamfind
-    unmagic
+#    unmagic
     ppx_tools.metaquot
 
 OCAMLDEPFLAGS=

@@ -4,14 +4,14 @@ open Spotlib.Spot
 open Utils
 open Sig
 
-type path = Sig.out_ident [@@deriving conv{ocaml_of}, typerep]
+type path = Sig.out_ident [@@deriving conv{ocaml_of}(*, typerep*)]
 
 val string_of_path : path -> string
 val format_path : Format.t -> path -> unit
 
 type position = [%import: Lexing.position]
 and location = Location.t = { loc_start: position; loc_end: position; loc_ghost: bool }
-  [@@deriving conv{ocaml_of}, typerep]
+  [@@deriving conv{ocaml_of}(*, typerep*)]
 
 type v =
   | Def     of def
@@ -77,7 +77,7 @@ and expr =
   | EAddAlias    of v * expr
     (** [EddAlias (v,e)] explicitly adds [(Aliased (v,_)] *)
   | EError       of string
-[@@deriving conv{ocaml_of}, typerep]
+[@@deriving conv{ocaml_of}(*, typerep*)]
 
 val format : Format.t -> expr -> unit
 

@@ -100,8 +100,7 @@ module Out_type = struct
       | Ovar_fields fields ->
           Ovar_fields (map (fun (s,b,ts) ->
             String.hcons s, b, map hcons ts) fields)
-      | Ovar_name (i, ts) ->
-          Ovar_name (Out_ident.hcons i, map hcons ts)
+      | Ovar_typ ty -> Ovar_typ (hcons ty)
     in
     try Hashtbl.find cache_out_variant v with Not_found ->
       let v = f v in

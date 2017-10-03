@@ -1,13 +1,14 @@
 open Spotlib.Spot
 open List
+open Ocaml_conv.Default
 
 let rec search db conf pspec =
   Format.printf "Packs: %a@." (Ocaml.format_with Query.PackageSpec.ocaml_of_t) pspec;
   print_string "? ";
   let s = read_line () in
   let conf', pspec' = match Directive.parse s with
-    | Some (`Ok e) -> Directive.interpret db e conf pspec 
-    | Some (`Error (`Exn exn)) ->
+    | Some (Ok e) -> Directive.interpret db e conf pspec 
+    | Some (Error (`Exn exn)) ->
         !!% "Directive syntax error: %s@." (Exn.to_string exn);
         conf, pspec
     | None ->

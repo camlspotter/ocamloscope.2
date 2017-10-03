@@ -1,6 +1,7 @@
 (** Various tools *)
 
 open Spotlib.Spot
+open Ocaml_conv.Default
 
 open Typedtree
 open Path
@@ -139,9 +140,9 @@ module FilePath = struct
 end
 
 module Digest = struct
-  open Typerep_lib.Std
+  (* open Typerep_lib.Std *)
 
-  type t = string [@@deriving conv{ocaml}, typerep] (* = Digest.t in stdlib *)
+  type t = string [@@deriving conv{ocaml}(*, typerep*)] (* = Digest.t in stdlib *)
 
   let cache = Hashtbl.create 101
 

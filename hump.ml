@@ -1,12 +1,13 @@
 open Spotlib.Spot
 open Utils
 open Sig
-open Typerep_lib.Std
+open Ocaml_conv.Default    
+(* open Typerep_lib.Std *)
 
 type path = [%import: Outcometree.out_ident]
 and position = [%import: Lexing.position]
 and location = Location.t = { loc_start: position; loc_end: position; loc_ghost: bool }
-[@@deriving conv{ocaml_of}, typerep]
+[@@deriving conv{ocaml_of}(*, typerep*)]
 
 (* human friendly printing *)
 let ocaml_of_location = Location.ocaml_of_t
@@ -62,7 +63,7 @@ and expr =
   | ERecM of id * (id * expr option) list * (id * expr) list
   | EAddAlias of v * expr
   | EError of string
-[@@deriving conv{ocaml_of}, typerep]
+[@@deriving conv{ocaml_of}(*, typerep*)]
 
 let format ppf = Ocaml.format_with ocaml_of_expr ppf
 

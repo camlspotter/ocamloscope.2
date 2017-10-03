@@ -2,7 +2,7 @@
 
 (* XXX simply moved to sig.ml ? *)
 
-open Typerep_lib.Std
+(* open Typerep_lib.Std *)
 
 module Sig = struct
   open Sig
@@ -12,6 +12,6 @@ module Sig = struct
   and fsignature_item        = [%import: Sig.fsignature_item]
   and fsignature             = [%import: Sig.fsignature]
   and fmodule                = [%import: Sig.fmodule]
-  [@@deriving typerep]
+  (* [@@deriving typerep] *)
 end
 

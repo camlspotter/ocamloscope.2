@@ -54,7 +54,7 @@ module FilePath : sig
 end
 
 module Digest : sig
-  type t = Digest.t [@@deriving conv{ocaml}, typerep]
+  type t = Digest.t [@@deriving conv{ocaml}(* , typerep *)]
 
   val file : FilePath.t -> Digest.t
   (** The original [Digest.file] with cache. *)

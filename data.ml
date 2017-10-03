@@ -3,7 +3,8 @@ open List
 open Utils
 open Sig
 open Sigtyperep.Sig
-open Typerep_lib.Std
+(* open Typerep_lib.Std *)
+open Ocaml_conv.Default
 
 let name_of_data_file path = Filename.(chop_extension & basename path)
     
@@ -14,7 +15,7 @@ module SigFile = struct
            ; packs : (out_ident * fsignature) list
            ; stamp : Digest.t list
            }
-  [@@deriving conv{ocaml_of}, typerep]
+  [@@deriving conv{ocaml_of}(*, typerep*)]
 
   let sizes t =
     length t.packs, fold_left (+) 0 & flip map t.packs & fun (_, fsig) -> length fsig
@@ -33,7 +34,7 @@ module HumpFile = struct
            ; humps : (out_ident * Hump.expr) list
            ; stamp : Digest.t list
            }
-  [@@deriving conv{ocaml_of}, typerep]
+  [@@deriving conv{ocaml_of}(*, typerep*)]
 
   let save p ({name=n} as hump) =
     if not & check_file_name ~pack:n ~path:p then
@@ -45,7 +46,7 @@ module HumpFile = struct
 end
   
 type alias = Path of k * out_ident | Primitive of string
-  [@@deriving conv{ocaml_of}, typerep]
+  [@@deriving conv{ocaml_of}(*, typerep*)]
 
 module Dat = struct
   type humped_fsignature_item =
@@ -56,7 +57,7 @@ module Dat = struct
           ; items : humped_fsignature_item list
           ; stamp : Digest.t list
           }
-  [@@deriving conv{ocaml_of}, typerep]
+  [@@deriving conv{ocaml_of}(*, typerep*)]
 
   let size t = length t.items
 
@@ -71,7 +72,8 @@ module Dat = struct
     let o : Obj.t = with_ic (open_in_bin p) & fun ic -> Marshal.from_channel ic in
     !!% "Load done.@.";
     !!% "Typing...@.";
-    let dat = Unmagic.obj ~sharing:false typerep_of_t o in
+    (* let dat = Unmagic.obj ~sharing:false typerep_of_t o in *)
+    let dat = Obj.magic o in
     !!% "Typing done.@.";
     let sz = size dat in
     !!% "Got %d sigitems@." sz;
@@ -96,7 +98,7 @@ module DB = struct
           ; top_types : out_type array
           ; packs : (string * string option) list
           }
-  [@@deriving conv{ocaml_of}, typerep]
+  [@@deriving conv{ocaml_of}(*, typerep*)]
   (** type of db *)
 
   let fsignature_item i = (i.kind, i.path), i.res

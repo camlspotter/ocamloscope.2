@@ -5,6 +5,7 @@ open Utils
 open List
 open Sig
 open Hump
+open Ocaml_conv.Default
 
 type ent = (k * path) * v
   [@@deriving conv{ocaml_of}]

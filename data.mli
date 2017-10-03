@@ -14,7 +14,7 @@ module SigFile : sig
       ; packs : (out_ident * fsignature) list (** packages and their signatures *)
       ; stamp : Digest.t list                 (** the digests of the package *.cm* files *) 
       }
-  [@@deriving conv{ocaml_of}, typerep]
+  [@@deriving conv{ocaml_of}(*, typerep*)]
 
   val sizes : t -> int (*+ packages *) * int (*+ sigitems *)
 
@@ -34,7 +34,7 @@ module HumpFile : sig
       ; humps : (out_ident * Hump.expr) list (** packages and their humps *)
       ; stamp : Digest.t list                (** the digests of the package *.cm* files *) 
       }
-  [@@deriving conv{ocaml_of}, typerep]
+  [@@deriving conv{ocaml_of}(*, typerep*)]
 
   val save : FilePath.t -> t -> unit
 
@@ -45,7 +45,7 @@ end
 type alias =
   | Path of k * out_ident (** Alias of some k * path *)
   | Primitive of string (** A primitive %xxx *)
-  [@@deriving conv{ocaml_of}, typerep]
+  [@@deriving conv{ocaml_of}(*, typerep*)]
 
 module Dat : sig
   (** Image of .dat file 
@@ -68,7 +68,7 @@ module Dat : sig
       ; items   : humped_fsignature_item list (** all the items *)
       ; stamp   : Digest.t list               (** the digests of the package *.cm* files *)
       }
-  [@@deriving conv{ocaml_of}, typerep]
+  [@@deriving conv{ocaml_of}(*, typerep*)]
 
   val size : t -> int (*+ sigitems *)
 
@@ -100,7 +100,7 @@ module DB : sig
       ; top_types : out_type array                (** the unique types of items, for faster search *)
       ; packs     : (string * string option) list (** linked packages *)
       }
-  [@@deriving conv{ocaml_of}, typerep]
+  [@@deriving conv{ocaml_of}(*, typerep*)]
 
   val fsignature_item : item -> fsignature_item
   (** Rebuild [fsignature_item] for printing *)
