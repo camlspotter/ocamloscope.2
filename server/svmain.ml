@@ -50,11 +50,11 @@ let query ngrok_mode data qs =
                     ]
               in
               match res with  
-              | `Ok [] ->
+              | Ok [] ->
                   qstr, `OK, warns @ [ H.pcdata "Empty result" ], Some 0
-              | `Ok res ->
+              | Ok res ->
                   qstr, `OK, warns @ [ Render.print_summary (Summary.group res) ], Some (length res)
-              | `Error (`Exn e) -> 
+              | Error (`Exn e) -> 
                   let str =
                     let trace = Exn.get_backtrace () in
                     !% "Uncaught exception: %s\nBacktrace:\n%s\n" (Exn.to_string e) trace

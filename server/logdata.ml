@@ -1,4 +1,5 @@
 open Spotlib.Spot
+open Ocaml_conv.Default
 
 module Client = struct
 

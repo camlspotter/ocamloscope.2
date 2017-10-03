@@ -14,7 +14,7 @@ OCAMLPACKS[]=
     ppx_tools.metaquot
     lwt
     cohttp
-    cohttp.lwt
+    cohttp-lwt-unix
     tyxml
     tyxml.ppx # XXX this required opam install tyxml-ppx..
     netstring
