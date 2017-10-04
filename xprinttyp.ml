@@ -1,4 +1,5 @@
 [@@@ocaml.warning "-32"]
+module Oprint = Xoprint
 module Make(A : sig val rewrite : Path.t -> Outcometree.out_ident end) = struct
 (**************************************************************************)
 (*                                                                        *)
@@ -61,6 +62,8 @@ let rec tree_of_path = function
       Oide_dot (tree_of_path p, s)
   | Papply(p1, p2) ->
       Oide_apply (tree_of_path p1, tree_of_path p2)
+
+let tree_of_path p = A.rewrite p
 
 let rec path ppf = function
   | Pident id ->
