@@ -201,54 +201,54 @@ let sort_paths paths =
 
 let ocaml_compiler_opam_build_dir = lazy begin
   let lazy sw = Package.sw in
-  let d = sw.Opam.Switch.build_dir ^/ "ocaml" in
+  let d = sw.Opam.Switch.compiler_source_dir in
   if File.Test._d d then Some d else None
 end
     
-let traverse_packages apg =
-  let aps = apg.Ocamlfind.Analyzed_group.packages in
-  let opamo =
-    match assoc_opt apg !!Package.opams_of_ocamlfind with
-    | None -> None
-    | Some [opam] -> Some opam
-    | Some [] -> None
-    | _ -> assert false (* XXX error handling *)
-  in
-  let srcdir =
-    match opamo with
-    | None -> 
-        if exists Ocamlfind.Analyzed.is_base aps then
-          (* This is from OCaml compiler. *)
-          !!ocaml_compiler_opam_build_dir
-        else
-          None
-    | Some opam -> Some (Opam.Package.build_dir opam)
-  in
-  let gs = 
-    sort_then_group_by (fun (_,d,cmi,_,_) (_,d',cmi',_,_) ->
-      compare (d, module_name cmi) (d', module_name cmi'))
-    & concat_map (fun ap -> traverse_package srcdir apg ap) aps
-  in
-  let unify g =
-    let paths = 
-      let gs = sort_then_group_by (fun (_,p) (_,p') -> compare p p') & map (fun (path,_,_,_,_) -> split_head path) g in
-      sort_paths
-      & flip map gs & function
-        | [] -> assert false
-        | ((_,p)::_ as paths) ->
-            let packs =
-              Packpath.make_from_names
-                & unique
-                & concat_map (from_Some *< Packpath.parse) & map fst paths
-            in
-            put_head packs p
+let traverse_packages apg = with_return & fun return ->
+    let aps = apg.Ocamlfind.Analyzed_group.packages in
+    let opamo =
+      match assoc_opt apg !!Package.opams_of_ocamlfind with
+      | None -> None
+      | Some [opam] -> Some opam
+      | Some [] -> None
+      | Some opams -> return (Error (Printf.sprintf "Multiple opam packages associated with ocamlfind package group %s: %s" apg.Ocamlfind.Analyzed_group.name (String.concat " " (map (fun x -> x.Opam.Package.name) opams))))
     in
-    let (_,digest,cmi,_,_) = hd g in
-    let cmt = find_map_opt id & map (fun (_,_,_,cmt,_) -> cmt) g in
-    let cmti = find_map_opt id & map (fun (_,_,_,_,cmti) -> cmti) g in
-    { paths; digest; cmi; cmt; cmti; ocamlfinds= map (fun x -> apg, x) aps; opam= opamo }
-  in
-  map unify gs
+    let srcdir =
+      match opamo with
+      | None -> 
+          if exists Ocamlfind.Analyzed.is_base aps then
+            (* This is from OCaml compiler. *)
+            !!ocaml_compiler_opam_build_dir
+          else
+            None
+      | Some opam -> Some (Opam.Package.build_dir opam)
+    in
+    let gs = 
+      sort_then_group_by (fun (_,d,cmi,_,_) (_,d',cmi',_,_) ->
+        compare (d, module_name cmi) (d', module_name cmi'))
+      & concat_map (fun ap -> traverse_package srcdir apg ap) aps
+    in
+    let unify g =
+      let paths = 
+        let gs = sort_then_group_by (fun (_,p) (_,p') -> compare p p') & map (fun (path,_,_,_,_) -> split_head path) g in
+        sort_paths
+        & flip map gs & function
+          | [] -> assert false
+          | ((_,p)::_ as paths) ->
+              let packs =
+                Packpath.make_from_names
+                  & unique
+                  & concat_map (from_Some *< Packpath.parse) & map fst paths
+              in
+              put_head packs p
+      in
+      let (_,digest,cmi,_,_) = hd g in
+      let cmt = find_map_opt id & map (fun (_,_,_,cmt,_) -> cmt) g in
+      let cmti = find_map_opt id & map (fun (_,_,_,_,cmti) -> cmti) g in
+      { paths; digest; cmi; cmt; cmti; ocamlfinds= map (fun x -> apg, x) aps; opam= opamo }
+    in
+    Ok (map unify gs)
 
 let traverse_packages, cache = memoize_gen & fun _self apg -> traverse_packages apg
 

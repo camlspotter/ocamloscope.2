@@ -62,6 +62,7 @@ let is_cached datfile stamp =
     
 (* sig + hump = dat *)
 let package destdir p =
+  !!% "Scrape.package %s...@." p.Opamfind.Ocamlfind.Analyzed_group.name;
   let open Opamfind.Ocamlfind in
   let version = match p.Analyzed_group.packages with
     | [] -> assert false
