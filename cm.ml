@@ -266,9 +266,12 @@ let out_of_opam_cmi_table = lazy begin
     Format.(list "@ " string) (map (fun apg -> apg.Ocamlfind.Analyzed_group.name) apgs);
   Hashtbl.create_with 101 & fun tbl ->
     flip iter apgs & fun apg ->
-      flip iter (traverse_packages apg) & fun t ->
-        (* Must use normalized basename *)
-        Hashtbl.add tbl (String.uncapitalize_ascii & Filename.basename t.cmi, t.digest) t
+      match traverse_packages apg with
+      | Error _mes -> assert false
+      | Ok xs ->
+         flip iter xs & fun t ->
+           (* Must use normalized basename *)
+           Hashtbl.add tbl (String.uncapitalize_ascii & Filename.basename t.cmi, t.digest) t
 end
 
 let package_stamp ts =
@@ -305,8 +308,11 @@ let guess p =
   let d_cmi = Digest.file cmi in
   let traverse_and_find apgs =
     flip concat_map apgs & fun apg ->
-      let ts = traverse_packages apg in
-      filter (fun t -> m = module_name t.cmi && t.digest = d_cmi) ts
+      match traverse_packages apg with
+      | Ok ts ->
+        filter (fun t -> m = module_name t.cmi && t.digest = d_cmi)
+          ts
+      | Error _mes -> assert false
   in
   let maybe_out_of_opam () =
     match Hashtbl.find_all !!out_of_opam_cmi_table (String.uncapitalize_ascii & Filename.basename cmi, d_cmi) with
@@ -370,7 +376,9 @@ let test packs =
           mem apg.Opamfind.Ocamlfind.Analyzed_group.name xs)
   in
   flip iter apgs & fun apg ->
-    let ts = traverse_packages apg in
-    !!% "@[<2>Modules of %s:@ @[%a@]@]@."
-      apg.Ocamlfind.Analyzed_group.name
-      Format.(list "@ " format) ts
+    match traverse_packages apg with
+    | Error _ -> assert false
+    | Ok ts ->
+        !!% "@[<2>Modules of %s:@ @[%a@]@]@."
+          apg.Ocamlfind.Analyzed_group.name
+          Format.(list "@ " format) ts

@@ -30,7 +30,7 @@ val non_opam_dirs : FilePath.t list ref
 
 val traverse_packages
   : Ocamlfind.Analyzed_group.t
-  -> t list
+  -> (t list, string) Result.t
 (** Traverse modules accessible from the given OCamlFind package group 
     and return the list of them *)
 

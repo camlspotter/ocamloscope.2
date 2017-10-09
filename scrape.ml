@@ -69,7 +69,7 @@ let package destdir p =
     | p::_ -> Package.version p.Analyzed.package
   in
   let n = p.Opamfind.Ocamlfind.Analyzed_group.name in
-  let ms = Cm.traverse_packages p in
+  let ms = Result.from_Ok & Cm.traverse_packages p in
   let stamp = Cm.package_stamp ms in
   match is_cached (destdir ^/ n ^ ".dat") stamp with
   | Some x -> x
