@@ -16,7 +16,7 @@ type t = {
   cmt        : FilePath.t option; (** cmt file location *)
   cmti       : FilePath.t option; (** cmti file location *)
   ocamlfinds : (Ocamlfind.Analyzed_group.t * Ocamlfind.Analyzed.t) list;
-  opam       : Opam.Package.t option
+  opam       : Opamlib.Package.t option
 }
 [@@deriving conv{ocaml_of}]
 
@@ -41,7 +41,7 @@ let summary t =
     cmt = t.cmt;
     cmti = t.cmti;
     ocamlfinds = map (fun (_,ap) -> Ocamlfind.Analyzed.name ap) t.ocamlfinds;
-    opam = Option.fmap (fun x -> x.Opam.Package.name) t.opam
+    opam = Option.fmap (fun x -> x.Opamlib.Package.name) t.opam
   }
 
 let format ppf x = Summary.format ppf & summary x
@@ -201,7 +201,7 @@ let sort_paths paths =
 
 let ocaml_compiler_opam_build_dir = lazy begin
   let lazy sw = Package.sw in
-  let d = sw.Opam.Switch.compiler_source_dir in
+  let d = sw.Opamlib.Switch.compiler_source_dir in
   if File.Test._d d then Some d else None
 end
     
@@ -212,7 +212,7 @@ let traverse_packages apg = with_return & fun return ->
       | None -> None
       | Some [opam] -> Some opam
       | Some [] -> None
-      | Some opams -> return (Error (Printf.sprintf "Multiple opam packages associated with ocamlfind package group %s: %s" apg.Ocamlfind.Analyzed_group.name (String.concat " " (map (fun x -> x.Opam.Package.name) opams))))
+      | Some opams -> return (Error (Printf.sprintf "Multiple opam packages associated with ocamlfind package group %s: %s" apg.Ocamlfind.Analyzed_group.name (String.concat " " (map (fun x -> x.Opamlib.Package.name) opams))))
     in
     let srcdir =
       match opamo with
@@ -222,7 +222,7 @@ let traverse_packages apg = with_return & fun return ->
             !!ocaml_compiler_opam_build_dir
           else
             None
-      | Some opam -> Some (Opam.Package.build_dir opam)
+      | Some opam -> Some (Opamlib.Package.build_dir opam)
     in
     let gs = 
       sort_then_group_by (fun (_,d,cmi,_,_) (_,d',cmi',_,_) ->
@@ -313,24 +313,24 @@ let guess p =
     | [] -> default p
     | xs -> xs
   in
-  match Opam.package_dir_of !!Package.sw p with
+  match Opamlib.package_dir_of !!Package.sw p with
   | None -> maybe_out_of_opam ()
   | Some (`OPAMBuild []) -> assert false
   | Some (`OPAMBuild (n::_)) -> 
       begin match
-        filter (fun opam -> n = Opam.Package.name_version opam) !!Package.opam_packages
+        filter (fun opam -> n = Opamlib.Package.name_version opam) !!Package.opam_packages
       with
       | [] ->
           (* .opam/<sw>/name.ver, but name.ver is not known to OPAM *)
           !!% "Warning: No opam package for %s" n;
           default p
       | (_::_::_ as opams) -> 
-          !!% "Warning: More than one opam packages for %s (%a)" n Format.(list "@ " string) (map (fun opam -> opam.Opam.Package.name) opams);
+          !!% "Warning: More than one opam packages for %s (%a)" n Format.(list "@ " string) (map (fun opam -> opam.Opamlib.Package.name) opams);
           default p
       | [opam] ->
           match assoc_opt opam !!Package.ocamlfinds_of_opam with
           | None ->
-              !!% "Warning: No OCamlFind packages for OPAM %s" opam.Opam.Package.name;
+              !!% "Warning: No OCamlFind packages for OPAM %s" opam.Opamlib.Package.name;
               default p
           | Some [] ->
               !!% "Warning opam build %s has no ocamlfind package groups@." n;

@@ -36,7 +36,7 @@ let ocamlfind_package_groups = lazy (
     Ocamlfind.analyze_group ~stdlib_dir:(!!stdlib_dir) opg )
 )
 
-let opam_packages = lazy (Opam.get_installed !!sw)
+let opam_packages = lazy (Opamlib.get_installed !!sw)
 
 (* compute everything. probably inefficient *)
 let ocamlfinds_of_opam, opams_of_ocamlfind = 

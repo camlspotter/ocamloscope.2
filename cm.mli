@@ -15,7 +15,7 @@ type t = {
   cmt        : FilePath.t option; (** cmt file location *)
   cmti       : FilePath.t option; (** cmti file location *)
   ocamlfinds : (Ocamlfind.Analyzed_group.t * Ocamlfind.Analyzed.t) list;
-  opam       : Opam.Package.t option
+  opam       : Opamlib.Package.t option
 }
 [@@deriving conv{ocaml_of}]
 (** The result type *)
