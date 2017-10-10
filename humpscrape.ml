@@ -115,7 +115,7 @@ let scrape_ocamlfind_package destdir dump apg =
 
   | _ -> 
 
-  let ms = Cm.traverse_packages apg in
+  let ms = Result.from_Ok & Cm.traverse_packages apg in
   let stamp = Cm.package_stamp ms in
 
   match is_cached path stamp with
