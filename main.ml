@@ -132,7 +132,7 @@ module Package = struct
       | _ -> flip filter ps & fun (ag,_) -> mem ag.Ocamlfind.Analyzed_group.name anon_args
     in
     !!% "@[%a@]@."
-      (Ocaml.format_with [%derive.ocaml_of: (Ocamlfind.Analyzed_group.t * Opam.Package.t list) list] ) ps
+      (Ocaml.format_with [%derive.ocaml_of: (Ocamlfind.Analyzed_group.t * Opamlib.Package.t list) list] ) ps
 end
 
 module Dumphump = struct
