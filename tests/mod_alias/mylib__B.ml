@@ -1,3 +1,6 @@
-let x = A.x
+let y = A.x
+
+include A
+
           
   
