@@ -33,6 +33,7 @@ FILES[] =
     cmt
     reset
     dumpsource
+    dummypack
     hump
     humpext
     humpeval

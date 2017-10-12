@@ -69,7 +69,7 @@ module Test = struct
           let f = Humpflat.flatten (Outcometree.(Oide_dot (Oide_ident "NOTOP", m))) h in
           !!% "Flat =>@.%a@."
             (Ocaml.format_with [%derive.ocaml_of: Humpflat.ent list]) f
-      | _ -> assert false
+      | _, _ext -> failwith "oco test: only takes files with .cmi/.cmt/.cmti"
 end
 
 module Link = struct

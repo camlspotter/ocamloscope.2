@@ -28,6 +28,17 @@ val non_opam_dirs : FilePath.t list ref
     Used for the functions in this module.
 *)
 
+val traverse_package
+  : string option (*+ src directory *)
+  -> Ocamlfind.Analyzed_group.t (*+ OCamlFind package group *)
+  -> Ocamlfind.Analyzed.t (*+ OCamlFind package. Must be a member of the group *)
+  -> (Outcometree.out_ident (*+ module name *)
+      * Digest.t (*+ cmi digest *)
+      * FilePath.t (*+ cmi path *)
+      * string option (*+ cmt path *)
+      * string option (*+ cmti path *)
+     ) list
+
 val traverse_packages
   : Ocamlfind.Analyzed_group.t
   -> (t list, string) Result.t
@@ -49,6 +60,14 @@ val guess : FilePath.t -> t list
     If [test_mode] is set to [true], [guess p] does not try complex analysis of [p].
     It just returns the default value.
  *)
+
+val guess'
+  : out_of_opam_cmi_table:(string (* "xxx..cmi" *) * Digest.t, t) Hashtbl.t
+  -> sw:Opamlib.Switch.t
+  -> opam_packages:Opamlib.Package.t list
+  -> ocamlfinds_of_opam:(Opamlib.Package.t * Ocamlfind.Analyzed_group.t list) list
+  -> string
+  -> t list
 
 val reset_cache : unit -> unit
 (** Resets the caches used in this module *)

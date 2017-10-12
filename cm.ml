@@ -170,6 +170,7 @@ let traverse_package srcdir apg ap =
         match find_cms srcdir cmi with
         | `Error _ -> assert false
         | `Ok (_, cmt, cmti) ->
+            (* visit sub modules too, if packed *)
             let new_pcmis = match cmt with
               | Some cmt -> map (fun cmi -> path, cmi) & get_packed & Cmt_format.read_cmt cmt
               | None -> []
@@ -205,14 +206,17 @@ let ocaml_compiler_opam_build_dir = lazy begin
   if File.Test._d d then Some d else None
 end
     
-let traverse_packages apg = with_return & fun return ->
+let traverse_packages apg = with_return & fun { return } ->
     let aps = apg.Ocamlfind.Analyzed_group.packages in
     let opamo =
       match assoc_opt apg !!Package.opams_of_ocamlfind with
       | None -> None
       | Some [opam] -> Some opam
       | Some [] -> None
-      | Some opams -> return (Error (Printf.sprintf "Multiple opam packages associated with ocamlfind package group %s: %s" apg.Ocamlfind.Analyzed_group.name (String.concat " " (map (fun x -> x.Opamlib.Package.name) opams))))
+      | Some opams ->
+          (* Ambiguous!  If it has no units, just skip it *)
+        if Ocamlfind.Analyzed_group.no_units apg then return (Ok [])
+        else return (Error (Printf.sprintf "Multiple opam packages associated with ocamlfind package group %s: %s" apg.Ocamlfind.Analyzed_group.name (String.concat " " (map (fun x -> x.Opamlib.Package.name) opams))))
     in
     let srcdir =
       match opamo with
@@ -256,22 +260,28 @@ let reset_cache () =
   Cache.reset_cache ();
   Hashtbl.clear cache
 
+let normalize_cmi_name = String.uncapitalize_ascii *< Filename.basename
+
+(* [ (("hello.cmi", <digest>), t)
+   ; ...
+   ] 
+*)
 let out_of_opam_cmi_table = lazy begin
-  (* no opam apgs *)
-  let apgs = flip filter_map !!Package.opams_of_ocamlfind & function
+  let apgs_without_opam = flip filter_map !!Package.opams_of_ocamlfind & function
     | apg, [] -> Some apg
     | _ -> None
   in
   !!% "@[<2>Scanning the following not-by-OPAM packages: @[%a@]@]@."
-    Format.(list "@ " string) (map (fun apg -> apg.Ocamlfind.Analyzed_group.name) apgs);
+    Format.(list "@ " string)
+      (map (fun apg -> apg.Ocamlfind.Analyzed_group.name) apgs_without_opam);
   Hashtbl.create_with 101 & fun tbl ->
-    flip iter apgs & fun apg ->
+    flip iter apgs_without_opam & fun apg ->
       match traverse_packages apg with
       | Error _mes -> assert false
       | Ok xs ->
          flip iter xs & fun t ->
            (* Must use normalized basename *)
-           Hashtbl.add tbl (String.uncapitalize_ascii & Filename.basename t.cmi, t.digest) t
+           Hashtbl.add tbl (normalize_cmi_name t.cmi, t.digest) t
 end
 
 let package_stamp ts =
@@ -298,10 +308,7 @@ let default p =
     }
   ]
   
-(* XXX this triggers big scanning of packages, even in the test mode *)
-let guess p =
-  if !test_mode then default p else
-    
+let guess' ~out_of_opam_cmi_table ~sw ~opam_packages ~ocamlfinds_of_opam p =
   let m = module_name p in
   let cmi = Filename.change_extension ~ext:".cmi" p in
   if not & File.Test._f cmi then failwithf "cmi file %s is not found" cmi;
@@ -310,21 +317,21 @@ let guess p =
     flip concat_map apgs & fun apg ->
       match traverse_packages apg with
       | Ok ts ->
-        filter (fun t -> m = module_name t.cmi && t.digest = d_cmi)
-          ts
+          filter (fun t -> m = module_name t.cmi && t.digest = d_cmi)
+            ts
       | Error _mes -> assert false
   in
   let maybe_out_of_opam () =
-    match Hashtbl.find_all !!out_of_opam_cmi_table (String.uncapitalize_ascii & Filename.basename cmi, d_cmi) with
+    match Hashtbl.find_all out_of_opam_cmi_table (normalize_cmi_name cmi, d_cmi) with
     | [] -> default p
     | xs -> xs
   in
-  match Opamlib.package_dir_of !!Package.sw p with
+  match Opamlib.package_dir_of sw p with
   | None -> maybe_out_of_opam ()
   | Some (`OPAMBuild []) -> assert false
   | Some (`OPAMBuild (n::_)) -> 
       begin match
-        filter (fun opam -> n = Opamlib.Package.name_version opam) !!Package.opam_packages
+        filter (fun opam -> n = Opamlib.Package.name_version opam) opam_packages
       with
       | [] ->
           (* .opam/<sw>/name.ver, but name.ver is not known to OPAM *)
@@ -334,7 +341,7 @@ let guess p =
           !!% "Warning: More than one opam packages for %s (%a)" n Format.(list "@ " string) (map (fun opam -> opam.Opamlib.Package.name) opams);
           default p
       | [opam] ->
-          match assoc_opt opam !!Package.ocamlfinds_of_opam with
+          match assoc_opt opam ocamlfinds_of_opam with
           | None ->
               !!% "Warning: No OCamlFind packages for OPAM %s" opam.Opamlib.Package.name;
               default p
@@ -366,8 +373,17 @@ let guess p =
           !!% "Warning: guess: returned [] at traverse_and_find dir=%s apgs=%a@."
             dir
             Format.(list "@ " string) (map (fun apg -> apg.Ocamlfind.Analyzed_group.name) apgs)
-
   
+(* XXX this triggers big scanning of packages, even in the test mode *)
+let guess p =
+  if !test_mode then default p else
+    
+  let out_of_opam_cmi_table = !!out_of_opam_cmi_table in
+  let sw                    = !!Package.sw in
+  let opam_packages         = !!Package.opam_packages in
+  let ocamlfinds_of_opam    = !!Package.ocamlfinds_of_opam in
+  guess' ~out_of_opam_cmi_table ~sw ~opam_packages ~ocamlfinds_of_opam p 
+
 let test packs =
   let apgs = match packs with
     | [] -> !!Package.ocamlfind_package_groups
